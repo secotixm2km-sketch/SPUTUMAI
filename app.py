@@ -67,7 +67,7 @@ with tab1:
             
             run_button = st.button('Mulai Pemindaian', type="primary", use_container_width=True)
             
-        if run_button:
+if run_button:
             with st.spinner('Sistem sedang mengekstraksi fitur seluler...'):
                 results = model(image)
                 res_plotted = results[0].plot() 
@@ -75,22 +75,38 @@ with tab1:
                 jumlah_bakteri = len(results[0].boxes)
                 
                 with col2:
-                    st.success("Pemindaian Selesai")
+                    st.success("✅ Pemindaian Selesai")
                     st.image(res_plotted, channels="BGR", use_container_width=True)
                     
-                    st.write("#### Ringkasan Analisis")
-                    if jumlah_bakteri > 0:
-                        st.metric(label="Total Sel Terdeteksi", value=f"{jumlah_bakteri} Bakteri", delta="Terindikasi TB Positif", delta_color="inverse")
-                    else:
-                        st.metric(label="Total Sel Terdeteksi", value="0 Bakteri", delta="Negatif / Bersih", delta_color="normal")
+                    st.write("#### 📊 Ringkasan & Interpretasi Medis")
                     
+                    # Logika Klasifikasi Tingkat Keparahan (Adaptasi Skala BTA)
+                    if jumlah_bakteri == 0:
+                        st.metric(label="Total Sel Terdeteksi", value="0 Bakteri", delta="Negatif / Bersih", delta_color="normal")
+                        st.info("**Interpretasi:** Tidak ditemukan indikasi bakteri *Mycobacterium tuberculosis* pada area citra ini. Disarankan memeriksa lapang pandang sampel lainnya untuk memastikan hasil diagnosis.")
+                    
+                    elif 1 <= jumlah_bakteri <= 9:
+                        st.metric(label="Total Sel Terdeteksi", value=f"{jumlah_bakteri} Bakteri", delta="Positif Lemah (Scanty)", delta_color="inverse")
+                        st.warning("**Interpretasi (Scanty):** Ditemukan sejumlah kecil bakteri. Pasien terindikasi positif TB tingkat awal. Sangat disarankan untuk melakukan pengujian ulang sampel atau konfirmasi dengan Tes Cepat Molekuler (TCM).")
+                    
+                    elif 10 <= jumlah_bakteri <= 99:
+                        st.metric(label="Total Sel Terdeteksi", value=f"{jumlah_bakteri} Bakteri", delta="Positif Aktif (+1)", delta_color="inverse")
+                        st.error("**Interpretasi (+1):** Terindikasi infeksi aktif tingkat sedang. Konsentrasi bakteri cukup tinggi pada dahak. Segera rujuk pasien ke fasilitas layanan kesehatan untuk memulai pengobatan OAT (Obat Anti Tuberkulosis).")
+                    
+                    else:
+                        st.metric(label="Total Sel Terdeteksi", value=f"{jumlah_bakteri} Bakteri", delta="Positif Tinggi (+2 / +3)", delta_color="inverse")
+                        st.error("**Interpretasi (+2 / +3):** Terindikasi infeksi aktif tingkat parah. Beban bakteri sangat tinggi dan pasien berisiko tinggi menularkan penyakit. Ambil tindakan isolasi dan intervensi medis darurat segera.")
+                    
+                    st.markdown("---")
+                    
+                    # Fitur Download Gambar
                     img_pil = Image.fromarray(res_plotted[..., ::-1]) 
                     buf = io.BytesIO()
                     img_pil.save(buf, format="JPEG")
                     byte_im = buf.getvalue()
                     
                     st.download_button(
-                        label="Unduh Citra Hasil Analisis",
+                        label="📥 Unduh Citra Hasil Analisis",
                         data=byte_im,
                         file_name="SputumAI_Result.jpg",
                         mime="image/jpeg",
