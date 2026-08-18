@@ -2,11 +2,14 @@ import streamlit as st
 from ultralytics import YOLO
 from PIL import Image
 import io
+import datetime
+import tempfile
+from fpdf import FPDF
 
 # 1. Konfigurasi Halaman
 st.set_page_config(page_title="SputumAI | Deteksi TBC", layout="wide")
 
-# 2. Custom CSS untuk membersihkan antarmuka
+# 2. Custom CSS
 hide_streamlit_style = """
             <style>
             #MainMenu {visibility: hidden;}
@@ -37,15 +40,12 @@ with tab1:
     st.markdown("#### Area Pengunggahan Citra")
     st.markdown("Silakan unggah citra mikroskopis dahak (sputum) untuk memulai analisis. Pastikan citra memiliki resolusi yang baik dan fokus agar sistem dapat mengekstraksi fitur seluler secara optimal.")
     
-    # Membagi layout menjadi 2 kolom (Kiri lebih lebar dari Kanan)
     col_upload, col_instruksi = st.columns([2, 1])
     
     with col_upload:
-        # Kotak upload utama
         uploaded_file = st.file_uploader("Pilih file gambar", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
         
     with col_instruksi:
-        # Kotak informasi di sebelah kanan uploader
         st.info("""
         **Panduan Standar:**
         - Format didukung: JPG, JPEG, PNG
@@ -53,9 +53,8 @@ with tab1:
         - Disarankan menggunakan sampel dengan pewarnaan standar (misal: Ziehl-Neelsen).
         """)
         
-    st.markdown("---") # Garis pembatas pemisah area kerja
+    st.markdown("---")
 
-    # === LOGIKA JIKA GAMBAR SUDAH DIUNGGAH ===
     if uploaded_file is not None:
         image = Image.open(uploaded_file)
         
@@ -67,52 +66,134 @@ with tab1:
             
             run_button = st.button('Mulai Pemindaian', type="primary", use_container_width=True)
             
-if run_button:
+        if run_button:
             with st.spinner('Sistem sedang mengekstraksi fitur seluler...'):
                 results = model(image)
                 res_plotted = results[0].plot() 
-                
                 jumlah_bakteri = len(results[0].boxes)
                 
                 with col2:
                     st.success("✅ Pemindaian Selesai")
                     st.image(res_plotted, channels="BGR", use_container_width=True)
-                    
                     st.write("#### 📊 Ringkasan & Interpretasi Medis")
                     
-                    # Logika Klasifikasi Tingkat Keparahan (Adaptasi Skala BTA)
+                    # Variabel penampung teks untuk Cetak PDF
+                    kategori_teks = ""
+                    interpretasi_teks = ""
+                    
                     if jumlah_bakteri == 0:
-                        st.metric(label="Total Sel Terdeteksi", value="0 Bakteri", delta="Negatif / Bersih", delta_color="normal")
-                        st.info("**Interpretasi:** Tidak ditemukan indikasi bakteri *Mycobacterium tuberculosis* pada area citra ini. Disarankan memeriksa lapang pandang sampel lainnya untuk memastikan hasil diagnosis.")
+                        kategori_teks = "Negatif / Bersih"
+                        interpretasi_teks = "Tidak ditemukan indikasi bakteri Mycobacterium tuberculosis pada area citra ini. Disarankan memeriksa lapang pandang sampel lainnya untuk memastikan hasil diagnosis."
+                        st.metric(label="Total Sel Terdeteksi", value="0 Bakteri", delta=kategori_teks, delta_color="normal")
+                        st.info(f"**Interpretasi:** {interpretasi_teks}")
                     
                     elif 1 <= jumlah_bakteri <= 9:
-                        st.metric(label="Total Sel Terdeteksi", value=f"{jumlah_bakteri} Bakteri", delta="Positif Lemah (Scanty)", delta_color="inverse")
-                        st.warning("**Interpretasi (Scanty):** Ditemukan sejumlah kecil bakteri. Pasien terindikasi positif TB tingkat awal. Sangat disarankan untuk melakukan pengujian ulang sampel atau konfirmasi dengan Tes Cepat Molekuler (TCM).")
+                        kategori_teks = "Positif Lemah (Scanty)"
+                        interpretasi_teks = "Ditemukan sejumlah kecil bakteri. Pasien terindikasi positif TB tingkat awal. Sangat disarankan untuk melakukan pengujian ulang sampel atau konfirmasi dengan Tes Cepat Molekuler (TCM)."
+                        st.metric(label="Total Sel Terdeteksi", value=f"{jumlah_bakteri} Bakteri", delta=kategori_teks, delta_color="inverse")
+                        st.warning(f"**Interpretasi (Scanty):** {interpretasi_teks}")
                     
                     elif 10 <= jumlah_bakteri <= 99:
-                        st.metric(label="Total Sel Terdeteksi", value=f"{jumlah_bakteri} Bakteri", delta="Positif Aktif (+1)", delta_color="inverse")
-                        st.error("**Interpretasi (+1):** Terindikasi infeksi aktif tingkat sedang. Konsentrasi bakteri cukup tinggi pada dahak. Segera rujuk pasien ke fasilitas layanan kesehatan untuk memulai pengobatan OAT (Obat Anti Tuberkulosis).")
+                        kategori_teks = "Positif Aktif (+1)"
+                        interpretasi_teks = "Terindikasi infeksi aktif tingkat sedang. Konsentrasi bakteri cukup tinggi pada dahak. Segera rujuk pasien ke fasilitas layanan kesehatan untuk memulai pengobatan OAT (Obat Anti Tuberkulosis)."
+                        st.metric(label="Total Sel Terdeteksi", value=f"{jumlah_bakteri} Bakteri", delta=kategori_teks, delta_color="inverse")
+                        st.error(f"**Interpretasi (+1):** {interpretasi_teks}")
                     
                     else:
-                        st.metric(label="Total Sel Terdeteksi", value=f"{jumlah_bakteri} Bakteri", delta="Positif Tinggi (+2 / +3)", delta_color="inverse")
-                        st.error("**Interpretasi (+2 / +3):** Terindikasi infeksi aktif tingkat parah. Beban bakteri sangat tinggi dan pasien berisiko tinggi menularkan penyakit. Ambil tindakan isolasi dan intervensi medis darurat segera.")
+                        kategori_teks = "Positif Tinggi (+2 / +3)"
+                        interpretasi_teks = "Terindikasi infeksi aktif tingkat parah. Beban bakteri sangat tinggi dan pasien berisiko tinggi menularkan penyakit. Ambil tindakan isolasi dan intervensi medis darurat segera."
+                        st.metric(label="Total Sel Terdeteksi", value=f"{jumlah_bakteri} Bakteri", delta=kategori_teks, delta_color="inverse")
+                        st.error(f"**Interpretasi (+2 / +3):** {interpretasi_teks}")
                     
                     st.markdown("---")
                     
-                    # Fitur Download Gambar
+                    # Konversi Gambar ke Biner (Untuk didownload & ditaruh ke PDF)
                     img_pil = Image.fromarray(res_plotted[..., ::-1]) 
                     buf = io.BytesIO()
                     img_pil.save(buf, format="JPEG")
                     byte_im = buf.getvalue()
                     
-                    st.download_button(
-                        label="📥 Unduh Citra Hasil Analisis",
-                        data=byte_im,
-                        file_name="SputumAI_Result.jpg",
-                        mime="image/jpeg",
-                        use_container_width=True
-                    )
-                            
+                    # ========================================================
+                    # PROSES PEMBUATAN DOKUMEN PDF
+                    # ========================================================
+                    pdf = FPDF()
+                    pdf.add_page()
+                    
+                    # Kop Surat
+                    pdf.set_font("Arial", "B", 16)
+                    pdf.cell(0, 10, "Laporan Analisis Skrining SputumAI", ln=True, align="C")
+                    
+                    # Tanggal Otomatis
+                    tanggal_sekarang = datetime.datetime.now().strftime('%d %B %Y - %H:%M')
+                    pdf.set_font("Arial", "", 12)
+                    pdf.cell(0, 10, f"Tanggal Cetak Dokumen: {tanggal_sekarang}", ln=True, align="C")
+                    pdf.line(10, 30, 200, 30) # Garis pembatas kop surat
+                    pdf.ln(10)
+                    
+                    # Menyisipkan Gambar Hasil AI ke PDF menggunakan Temporary File
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                        tmp.write(byte_im)
+                        tmp_path = tmp.name
+                    pdf.image(tmp_path, x=20, w=170)
+                    pdf.ln(5)
+                    
+                    # Menyisipkan Data Teks ke PDF
+                    pdf.set_font("Arial", "B", 14)
+                    pdf.cell(0, 10, "Ringkasan Hasil Klinis", ln=True)
+                    
+                    pdf.set_font("Arial", "B", 12)
+                    pdf.cell(50, 8, "Total Sel Terdeteksi", border=0)
+                    pdf.set_font("Arial", "", 12)
+                    pdf.cell(0, 8, f": {jumlah_bakteri} Bakteri", ln=True)
+                    
+                    pdf.set_font("Arial", "B", 12)
+                    pdf.cell(50, 8, "Kategori / Status", border=0)
+                    pdf.set_font("Arial", "", 12)
+                    pdf.cell(0, 8, f": {kategori_teks}", ln=True)
+                    
+                    pdf.set_font("Arial", "B", 12)
+                    pdf.cell(0, 10, "Interpretasi Sistem :", ln=True)
+                    pdf.set_font("Arial", "", 12)
+                    pdf.multi_cell(0, 7, f"{interpretasi_teks}")
+                    
+                    pdf.ln(10)
+                    
+                    # Catatan Kaki (Disclaimer)
+                    pdf.set_font("Arial", "I", 10)
+                    pdf.set_text_color(100, 100, 100)
+                    pdf.multi_cell(0, 5, "Peringatan (Disclaimer): Dokumen laporan ini dihasilkan secara otomatis oleh sistem Kecerdasan Buatan (AI) SputumAI untuk keperluan skrining awal. Dokumen ini BUKAN merupakan diagnosis final dari tenaga medis. Harap konsultasikan ke dokter terkait untuk tindakan lanjutan.")
+                    
+                    # Ekspor PDF ke dalam bentuk Byte
+                    pdf_output = pdf.output(dest='S')
+                    if type(pdf_output) == str:
+                        pdf_bytes = pdf_output.encode('latin-1')
+                    else:
+                        pdf_bytes = bytes(pdf_output)
+
+                    # ========================================================
+                    # TAMPILAN 2 TOMBOL DOWNLOAD BERDAMPINGAN
+                    # ========================================================
+                    col_btn1, col_btn2 = st.columns(2)
+                    
+                    with col_btn1:
+                        st.download_button(
+                            label="🖼️ Unduh Gambar AI",
+                            data=byte_im,
+                            file_name="Hasil_Citra_SputumAI.jpg",
+                            mime="image/jpeg",
+                            use_container_width=True
+                        )
+                    
+                    with col_btn2:
+                        st.download_button(
+                            label="📄 Unduh Laporan PDF",
+                            data=pdf_bytes,
+                            file_name="Rekam_Medis_SputumAI.pdf",
+                            mime="application/pdf",
+                            type="primary", # Tombol diberi warna khusus
+                            use_container_width=True
+                        )
+
 # ================= TAB 2: TENTANG =================
 with tab2:
     st.write("### Teknologi di Balik SputumAI")
