@@ -34,10 +34,28 @@ tab1, tab2 = st.tabs(["Area Kerja Diagnostik", "Tentang Sistem"])
 
 # ================= TAB 1: AREA DETEKSI =================
 with tab1:
-    st.write("#### Unggah Sampel")
+    st.markdown("#### Area Pengunggahan Citra")
+    st.markdown("Silakan unggah citra mikroskopis dahak (sputum) untuk memulai analisis. Pastikan citra memiliki resolusi yang baik dan fokus agar sistem dapat mengekstraksi fitur seluler secara optimal.")
     
-    uploaded_file = st.file_uploader("Pilih file gambar dengan resolusi baik", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+    # Membagi layout menjadi 2 kolom (Kiri lebih lebar dari Kanan)
+    col_upload, col_instruksi = st.columns([2, 1])
+    
+    with col_upload:
+        # Kotak upload utama
+        uploaded_file = st.file_uploader("Pilih file gambar", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+        
+    with col_instruksi:
+        # Kotak informasi di sebelah kanan uploader
+        st.info("""
+        **Panduan Standar:**
+        - Format didukung: JPG, JPEG, PNG
+        - Pastikan pencahayaan mikroskop memadai.
+        - Disarankan menggunakan sampel dengan pewarnaan standar (misal: Ziehl-Neelsen).
+        """)
+        
+    st.markdown("---") # Garis pembatas pemisah area kerja
 
+    # === LOGIKA JIKA GAMBAR SUDAH DIUNGGAH ===
     if uploaded_file is not None:
         image = Image.open(uploaded_file)
         
@@ -78,7 +96,7 @@ with tab1:
                         mime="image/jpeg",
                         use_container_width=True
                     )
-
+                            
 # ================= TAB 2: TENTANG =================
 with tab2:
     st.write("### Teknologi di Balik SputumAI")
