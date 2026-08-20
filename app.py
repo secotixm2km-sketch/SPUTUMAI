@@ -40,7 +40,7 @@ with tab1:
     st.markdown("#### Area Pengambilan Sampel")
     st.markdown("Pilih metode input citra mikroskopis dahak (sputum) untuk memulai analisis. Pastikan citra memiliki resolusi yang baik dan fokus optimal.")
     
-    # --- FITUR BARU: PILIHAN METODE INPUT ---
+    # Pilihan Metode Input
     metode_input = st.radio(
         "Pilih Sumber Citra:",
         ["📂 Unggah File Gambar", "📸 Kamera Mikroskop Langsung"],
@@ -49,13 +49,12 @@ with tab1:
     
     col_input, col_instruksi = st.columns([2, 1])
     
-    gambar_input = None # Variabel penampung gambar
+    gambar_input = None 
     
     with col_input:
         if metode_input == "📂 Unggah File Gambar":
             gambar_input = st.file_uploader("Pilih file gambar (JPG/PNG)", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
         else:
-            # Mengaktifkan kamera browser
             st.info("💡 Tip: Jika menggunakan kamera mikroskop USB, pastikan Anda telah mengizinkan akses kamera di browser dan memilih perangkat kamera yang benar.")
             gambar_input = st.camera_input("Ambil citra langsung dari lensa mikroskop", label_visibility="collapsed")
             
@@ -118,12 +117,15 @@ with tab1:
                     
                     st.markdown("---")
                     
-                    # Konversi Gambar & Buat PDF
+                    # Konversi Gambar ke Biner
                     img_pil = Image.fromarray(res_plotted[..., ::-1]) 
                     buf = io.BytesIO()
                     img_pil.save(buf, format="JPEG")
                     byte_im = buf.getvalue()
                     
+                    # ========================================================
+                    # PEMBUATAN PDF (BEBAS DARI EMOJI)
+                    # ========================================================
                     pdf = FPDF()
                     pdf.add_page()
                     pdf.set_font("Arial", "B", 16)
@@ -143,19 +145,25 @@ with tab1:
                     
                     pdf.set_font("Arial", "B", 14)
                     pdf.cell(0, 10, "Ringkasan Hasil Klinis", ln=True)
+                    
+                    # Membersihkan teks dari emoji sebelum masuk ke PDF
+                    metode_pdf = "Unggah File Gambar" if "Unggah" in metode_input else "Kamera Mikroskop Langsung"
+                    
                     pdf.set_font("Arial", "B", 12)
                     pdf.cell(50, 8, "Metode Input", border=0)
                     pdf.set_font("Arial", "", 12)
-                    pdf.cell(0, 8, f": {metode_input}", ln=True)
+                    pdf.cell(0, 8, f": {metode_pdf}", ln=True)
                     
                     pdf.set_font("Arial", "B", 12)
                     pdf.cell(50, 8, "Total Sel Terdeteksi", border=0)
                     pdf.set_font("Arial", "", 12)
                     pdf.cell(0, 8, f": {jumlah_bakteri} Bakteri", ln=True)
+                    
                     pdf.set_font("Arial", "B", 12)
                     pdf.cell(50, 8, "Kategori / Status", border=0)
                     pdf.set_font("Arial", "", 12)
                     pdf.cell(0, 8, f": {kategori_teks}", ln=True)
+                    
                     pdf.set_font("Arial", "B", 12)
                     pdf.cell(0, 10, "Interpretasi Sistem :", ln=True)
                     pdf.set_font("Arial", "", 12)
