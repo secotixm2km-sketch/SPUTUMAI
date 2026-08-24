@@ -70,7 +70,9 @@ with tab1:
 
     # === JIKA GAMBAR SUDAH DIUNGGAH / DIFOTO ===
     if gambar_input is not None:
-        image = Image.open(gambar_input)
+        
+        # PERBAIKAN 1: Pastikan format gambar selalu RGB (Red, Green, Blue) murni
+        image = Image.open(gambar_input).convert('RGB')
         
         col1, col2 = st.columns(2)
         
@@ -82,8 +84,9 @@ with tab1:
             
         if run_button:
             with st.spinner('Sistem sedang mengekstraksi fitur seluler...'):
-                # Tambahkan conf=0.1 di dalam kurungnya!
-                results = model(image, conf=0.1) 
+                
+                # PERBAIKAN 2: Menggunakan conf=0.1 dan ukuran gambar 640 persis seperti Colab
+                results = model.predict(source=image, conf=0.1, imgsz=640)
                 res_plotted = results[0].plot() 
                 jumlah_bakteri = len(results[0].boxes)
                 
