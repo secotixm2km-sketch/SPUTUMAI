@@ -28,7 +28,7 @@ st.markdown("---")
 # Load Model
 @st.cache_resource
 def load_model():
-    return YOLO('best.pt')
+    return YOLO('best_tbc_v2.pt')
 
 model = load_model()
 
