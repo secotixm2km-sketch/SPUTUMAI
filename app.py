@@ -82,7 +82,8 @@ with tab1:
             
         if run_button:
             with st.spinner('Sistem sedang mengekstraksi fitur seluler...'):
-                results = model(image)
+                # Tambahkan conf=0.1 di dalam kurungnya!
+                results = model(image, conf=0.1) 
                 res_plotted = results[0].plot() 
                 jumlah_bakteri = len(results[0].boxes)
                 
