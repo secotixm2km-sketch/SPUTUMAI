@@ -734,7 +734,12 @@ def generate_pdf_report(patient_info: dict, result_image: Image.Image, count: in
         "(Sp.PK) atau tenaga medis berwenang sebelum digunakan sebagai dasar diagnosis final."
     )
 
-    return bytes(pdf.output(dest="S"))
+    # --- PERBAIKAN DI SINI ---
+    pdf_output = pdf.output(dest="S")
+    if isinstance(pdf_output, str):
+        return pdf_output.encode("latin-1")
+    return bytes(pdf_output)
+
 
 
 # =============================================================================
