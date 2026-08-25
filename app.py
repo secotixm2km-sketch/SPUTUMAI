@@ -6,12 +6,10 @@ import datetime
 import tempfile
 from fpdf import FPDF
 
-# 1. Konfigurasi Halaman (Wajib Paling Atas)
+# 1. Konfigurasi Halaman 
 st.set_page_config(page_title="SputumAI | Clinical Dashboard", page_icon="🔬", layout="wide", initial_sidebar_state="collapsed")
 
-# =====================================================================
-# 2. CSS MODERN CLINICAL DASHBOARD
-# =====================================================================
+# 2. CSS MODERN CLINICAL DASHBOARD (Update Kontras - Saran 8)
 custom_css = """
 <style>
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
@@ -25,7 +23,7 @@ custom_css = """
         display: flex; justify-content: space-between; align-items: center; border-bottom: 5px solid #0ea5e9;
     }
     .medical-header h1 { margin: 0; font-size: 2.2rem; font-weight: 700; color: #ffffff;}
-    .medical-header p { margin: 5px 0 0 0; font-size: 1.1rem; color: #94a3b8;}
+    .medical-header p { margin: 5px 0 0 0; font-size: 1.1rem; color: #e2e8f0;} /* Kontras Ditingkatkan */
 
     .card {
         background: #ffffff; border-radius: 12px; padding: 25px;
@@ -49,11 +47,13 @@ custom_css = """
     .report-danger { background-color: #fef2f2; border-color: #ef4444; color: #991b1b; }
     .report-box h2 { font-size: 2.2rem; margin: 10px 0; color: inherit;}
     .conf-score { font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; color: #334155; }
+    
+    .disclaimer { font-size: 0.85rem; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 15px;}
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
-# =====================================================================
 
+# HEADER UTAMA
 st.markdown("""
 <div class="medical-header">
     <div>
@@ -76,19 +76,33 @@ except:
 
 col_input, col_output = st.columns([1, 2.2], gap="large")
 
+# BAGIAN KIRI: PANEL INPUT
 with col_input:
-    st.markdown("<div class='card'><div class='card-title'>📥 Panel Input Data</div>", unsafe_allow_html=True)
-    metode_input = st.radio("Sumber Citra Mikroskopis:", ["📂 Unggah File", "📸 Kamera Mikroskop"])
-    st.write("") 
+    st.markdown("<div class='card'><div class='card-title'>📋 Metadata Pasien</div>", unsafe_allow_html=True)
+    # Saran 5: Formulir Metadata Pasien
+    id_pasien = st.text_input("Nomor Rekam Medis / ID Anonim", placeholder="Contoh: RM-2026-08X")
+    usia_pasien = st.number_input("Usia Pasien", min_value=1, max_value=120, value=30)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("<div class='card'><div class='card-title'>📥 Panel Input Citra</div>", unsafe_allow_html=True)
+    metode_input = st.radio("Sumber Citra Mikroskopis:", ["📂 Unggah File (Drag & Drop)", "📸 Kamera Mikroskop"])
+    
+    # Saran 2: Panduan Kualitas Citra Medis
+    with st.expander("💡 Lihat Panduan Kualitas Citra"):
+        st.write("- Pastikan gambar fokus (tidak blur).")
+        st.write("- Pencahayaan terang dan merata.")
+        st.write("- Gunakan pewarnaan Ziehl-Neelsen (ZN).")
+        st.write("- Resolusi disarankan: minimal 800x600 px.")
     
     gambar_input = None 
-    if metode_input == "📂 Unggah File":
-        gambar_input = st.file_uploader("Upload sampel dahak (JPG/PNG)", type=["jpg", "jpeg", "png"])
+    if "Unggah File" in metode_input:
+        gambar_input = st.file_uploader("Upload sampel dahak", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
     else:
-        gambar_input = st.camera_input("Ambil dari lensa mikroskop")
+        gambar_input = st.camera_input("Ambil dari lensa mikroskop", label_visibility="collapsed")
         
     st.markdown("</div>", unsafe_allow_html=True)
 
+# BAGIAN KANAN: PANEL OUTPUT
 with col_output:
     if gambar_input is None:
         st.markdown("""
@@ -97,7 +111,7 @@ with col_output:
             <div class="empty-state">
                 <div style="font-size: 4rem;">🩺</div>
                 <h3>Menunggu Input Citra Medis</h3>
-                <p>Silakan unggah sampel dahak mikroskopis pada panel di sebelah kiri untuk memulai pemindaian otomatis.</p>
+                <p>Silakan lengkapi metadata dan unggah sampel dahak di panel sebelah kiri (mendukung fitur Drag & Drop).</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -119,17 +133,12 @@ with col_output:
                 boxes = results[0].boxes
                 jumlah_bakteri = len(boxes)
                 
-                # ========================================================
-                # MENGHITUNG CONFIDENCE SCORE
-                # ========================================================
                 if jumlah_bakteri > 0:
-                    # Mengubah tensor YOLO ke list, menjumlahkan, dan mencari rata-ratanya
                     conf_list = boxes.conf.tolist()
                     avg_conf = (sum(conf_list) / len(conf_list)) * 100
                     conf_text = f"{avg_conf:.1f}%"
                 else:
                     conf_text = "N/A"
-                # ========================================================
                 
                 col_g1, col_g2 = st.columns(2)
                 with col_g1:
@@ -143,7 +152,7 @@ with col_output:
                         <h3>✅ Hasil: Negatif (Bersih)</h3>
                         <h2>{jumlah_bakteri} Sel BTA</h2>
                         <div class="conf-score">Confidence Score: {conf_text}</div>
-                        <p><strong>Interpretasi:</strong> Tidak ditemukan indikasi bakteri pada lapang pandang ini. Lanjutkan ke area pandang lainnya.</p>
+                        <p><strong>Interpretasi:</strong> Tidak ditemukan indikasi bakteri pada lapang pandang ini.</p>
                     </div>
                     """, unsafe_allow_html=True)
                     kat_pdf, intp_pdf = "Negatif", "Tidak ditemukan indikasi bakteri."
@@ -154,7 +163,7 @@ with col_output:
                         <h3>⚠️ Hasil: Positif Lemah (Scanty)</h3>
                         <h2>{jumlah_bakteri} Sel BTA</h2>
                         <div class="conf-score">Confidence Score: {conf_text}</div>
-                        <p><strong>Interpretasi:</strong> Indikasi infeksi awal (1-9 BTA). Perlu observasi lebih lanjut dan uji klinis tambahan.</p>
+                        <p><strong>Interpretasi:</strong> Indikasi infeksi awal (1-9 BTA).</p>
                     </div>
                     """, unsafe_allow_html=True)
                     kat_pdf, intp_pdf = "Positif (Scanty)", "Indikasi infeksi awal."
@@ -165,14 +174,14 @@ with col_output:
                         <h3>🚨 Hasil: Positif Aktif (+1 / +2 / +3)</h3>
                         <h2>{jumlah_bakteri} Sel BTA</h2>
                         <div class="conf-score">Confidence Score: {conf_text}</div>
-                        <p><strong>Interpretasi:</strong> Beban bakteri sangat tinggi. Terindikasi infeksi aktif parah.</p>
+                        <p><strong>Interpretasi:</strong> Beban bakteri sangat tinggi. Terindikasi infeksi aktif.</p>
                     </div>
                     """, unsafe_allow_html=True)
                     kat_pdf, intp_pdf = "Positif Aktif", "Terindikasi infeksi tingkat parah."
                 
                 st.markdown("<hr style='margin: 20px 0;'>", unsafe_allow_html=True)
                 
-                # ================= PEMBUATAN PDF =================
+                # PEMBUATAN PDF (Dengan Metadata)
                 img_pil = Image.fromarray(res_plotted[..., ::-1]) 
                 buf = io.BytesIO()
                 img_pil.save(buf, format="JPEG")
@@ -181,16 +190,25 @@ with col_output:
                 pdf = FPDF()
                 pdf.add_page()
                 pdf.set_font("Arial", "B", 16)
-                pdf.cell(0, 10, "Laporan Analisis SputumAI", ln=True, align="C")
+                pdf.cell(0, 10, "Laporan Klinis SputumAI", ln=True, align="C")
                 pdf.line(10, 20, 200, 20)
                 pdf.ln(5)
+                
+                # Menambahkan Metadata Pasien ke PDF
+                pdf.set_font("Arial", "", 10)
+                pdf.cell(0, 6, f"ID / No. Rekam Medis : {id_pasien if id_pasien else 'Tidak Diisi'}", ln=True)
+                pdf.cell(0, 6, f"Usia Pasien          : {usia_pasien} Tahun", ln=True)
+                pdf.cell(0, 6, f"Tanggal Pemeriksaan  : {datetime.datetime.now().strftime('%d-%m-%Y %H:%M')}", ln=True)
+                pdf.ln(5)
+
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
                     tmp.write(byte_im)
                     pdf.image(tmp.name, x=20, w=170)
                 pdf.ln(10)
+                
                 pdf.set_font("Arial", "B", 12)
                 pdf.cell(0, 8, f"Total BTA Terdeteksi : {jumlah_bakteri} Sel", ln=True)
-                pdf.cell(0, 8, f"Confidence Score     : {conf_text}", ln=True) # Tambahan PDF
+                pdf.cell(0, 8, f"Confidence Score     : {conf_text}", ln=True)
                 pdf.cell(0, 8, f"Kategori Analisis    : {kat_pdf}", ln=True)
                 pdf.cell(0, 8, f"Interpretasi Sistem  : {intp_pdf}", ln=True)
                 
@@ -200,3 +218,11 @@ with col_output:
                 st.download_button(label="📄 Cetak PDF Laporan Medis", data=pdf_bytes, file_name="SputumAI_Report.pdf", mime="application/pdf", use_container_width=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
+
+# Saran 6: Penafian Hukum Medis (Disclaimer)
+st.markdown("""
+<div class="disclaimer">
+    <strong>DISCLAIMER MEDIS:</strong> Aplikasi SputumAI adalah alat bantu deteksi berbasis Artificial Intelligence dan tidak menggantikan keputusan medis profesional. 
+    Hasil pemindaian harus divalidasi oleh tenaga medis yang berwenang sebelum digunakan untuk diagnosis akhir atau rencana pengobatan.
+</div>
+""", unsafe_allow_html=True)
