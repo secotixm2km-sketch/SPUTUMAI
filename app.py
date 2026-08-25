@@ -885,12 +885,13 @@ def render_main_area(model, patient_info: dict):
             pdf_bytes = generate_pdf_report(patient_info, st.session_state.result_image, count, avg_conf)
             file_name = f"Laporan_SputumAI_{patient_info['rm_number'].replace(' ', '_')}.pdf"
 
-            st.download_button(
+                st.download_button(
                 label="⬇️ Unduh Laporan Medis (PDF)",
                 data=pdf_bytes,
                 file_name=file_name,
                 mime="application/pdf",
                 use_container_width=True,
+                key="download_pdf_btn",  # <-- TAMBAHKAN BARIS INI
             )
 
         st.markdown('</div>', unsafe_allow_html=True)
@@ -995,12 +996,13 @@ def main():
 
     patient_info = render_sidebar()
     render_header()
-
     model = load_model(MODEL_PATH)
 
+    # 1. Panel Input & Workspace
     render_main_area(model, patient_info)
-    render_results_section(patient_info)
 
+    # 2. Hasil Pemeriksaan (HANYA DIPANGGIL SEKALI DI SINI)
+    render_results_section(patient_info)  # Pastikan tidak ada duplikat fungsi ini di bawahnya!
 
 if __name__ == "__main__":
     main()
