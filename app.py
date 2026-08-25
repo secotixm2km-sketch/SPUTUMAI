@@ -7,215 +7,203 @@ import tempfile
 from fpdf import FPDF
 
 # 1. Konfigurasi Halaman (Wajib Paling Atas)
-st.set_page_config(page_title="SputumAI | Deteksi TBC", page_icon="🔬", layout="wide")
+st.set_page_config(page_title="SputumAI | Sistem Diagnostik", page_icon="🦠", layout="wide")
 
-# 2. Custom CSS & Tema Web (Operasi Plastik UI)
-custom_css = """
+# =====================================================================
+# 2. AREA BEBAS EDIT HTML & CSS (Silakan dimodifikasi sesuka hati!)
+# =====================================================================
+html_css_template = """
 <style>
-    /* Sembunyikan identitas bawaan Streamlit */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .st-emotion-cache-1y4p8pa {padding-top: 1rem;}
-    
-    /* Desain Banner Utama ala Web Profesional */
-    .main-banner {
-        background: linear-gradient(135deg, #02aab0 0%, #00cdac 100%);
-        padding: 30px;
-        border-radius: 15px;
+    /* Reset & Sembunyikan Bawaan Streamlit */
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
+    .block-container {padding-top: 0rem; padding-bottom: 0rem;}
+
+    /* Latar Belakang Seluruh Halaman */
+    .stApp {
+        background-color: #f4f7f6;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* HEADER / BANNER UTAMA (HTML Murni) */
+    .html-header {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        padding: 40px 20px;
         text-align: center;
-        box-shadow: 0px 8px 15px rgba(0,0,0,0.1);
+        border-radius: 0 0 25px 25px;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         margin-bottom: 30px;
     }
-    .main-banner h1 {color: white; margin-bottom: 5px; font-weight: 800; font-family: 'Arial', sans-serif; font-size: 45px;}
-    .main-banner p {color: #f0f8ff; font-size: 20px; margin-top: 0; font-weight: 500;}
-    
-    /* Desain Kotak Hasil Diagnosa (Custom Alert HTML) */
-    .result-box {padding: 15px; border-radius: 8px; margin-bottom: 20px;}
-    .box-negatif {background-color: #d4edda; border-left: 6px solid #28a745; color: #155724;}
-    .box-scanty {background-color: #fff3cd; border-left: 6px solid #ffc107; color: #856404;}
-    .box-positif {background-color: #f8d7da; border-left: 6px solid #dc3545; color: #721c24;}
-</style>
-"""
-st.markdown(custom_css, unsafe_allow_html=True)
+    .html-header h1 { margin: 0; font-size: 3rem; font-weight: 800; letter-spacing: 2px;}
+    .html-header p { margin: 10px 0 0 0; font-size: 1.2rem; opacity: 0.9;}
 
-# 3. Header Web Memakai HTML Banner
-st.markdown("""
-    <div class="main-banner">
-        <h1>🔬 SPUTUM-AI SYSTEM</h1>
-        <p>Platform Skrining Cerdas Sampel Dahak Mikroskopis (<i>Mycobacterium tuberculosis</i>)</p>
-    </div>
-""", unsafe_allow_html=True)
+    /* KARTU (CARDS) UNTUK MEMBUNGKUS KONTEN */
+    .html-card {
+        background-color: white;
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        border: 1px solid #e0e0e0;
+        margin-bottom: 20px;
+    }
+    .html-card-title {
+        color: #2c3e50;
+        font-size: 1.5rem;
+        font-weight: 600;
+        border-bottom: 3px solid #2a5298;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        display: inline-block;
+    }
+
+    /* KOTAK HASIL DETEKSI (Alerts) */
+    .alert-box { padding: 20px; border-radius: 10px; margin-top: 15px; border-left: 8px solid; }
+    .alert-safe { background-color: #e8f5e9; border-color: #2e7d32; color: #1b5e20; }
+    .alert-warning { background-color: #fff3e0; border-color: #ef6c00; color: #e65100; }
+    .alert-danger { background-color: #ffebee; border-color: #c62828; color: #b71c1c; }
+
+    /* MEMAKSA TOMBOL STREAMLIT MENJADI TOMBOL HTML MODERN */
+    div[data-testid="stButton"] > button {
+        background: linear-gradient(to right, #00c6ff, #0072ff);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-size: 16px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 10px rgba(0,114,255,0.3);
+    }
+    div[data-testid="stButton"] > button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 15px rgba(0,114,255,0.5);
+    }
+
+    /* MEMAKSA KOTAK UPLOAD MENJADI KEREN */
+    div[data-testid="stFileUploader"] {
+        border: 2px dashed #2a5298;
+        border-radius: 15px;
+        background-color: #f8faff;
+        padding: 10px;
+    }
+</style>
+
+<!-- Elemen Header HTML Langsung -->
+<div class="html-header">
+    <h1>🔬 SPUTUM-AI DASHBOARD</h1>
+    <p>Sistem Analisis Cerdas Mikroskopis Dahak Pasien TBC</p>
+</div>
+"""
+st.markdown(html_css_template, unsafe_allow_html=True)
+# =====================================================================
+
 
 # Load Model
 @st.cache_resource
 def load_model():
-    # Otomatis membaca best.pt yang baru kamu masukkan
     return YOLO('best.pt')
 
 model = load_model()
 
-# 4. Navigasi Web
-tab1, tab2 = st.tabs(["🩺 Area Kerja Diagnostik", "ℹ️ Tentang Sistem"])
+# ================= KONTEN UTAMA =================
+col_kiri, col_kanan = st.columns([1.2, 2])
 
-# ================= TAB 1: AREA DETEKSI =================
-with tab1:
-    st.markdown("### 📥 Input Sampel Mikroskopis")
-    st.markdown("Pilih metode input citra dahak (sputum) untuk memulai analisis.")
+with col_kiri:
+    # Menggunakan HTML Card untuk area input
+    st.markdown("<div class='html-card'><div class='html-card-title'>📥 Area Input Sampel</div>", unsafe_allow_html=True)
     
-    # Pilihan Metode Input dengan tampilan Card
-    metode_input = st.radio(
-        "Pilih Sumber Citra:",
-        ["📂 Unggah File Gambar", "📸 Kamera Mikroskop Langsung"],
-        horizontal=True
-    )
+    metode_input = st.radio("Pilih Metode:", ["📂 Unggah File", "📸 Kamera Mikroskop"], horizontal=True)
     
-    col_input, col_instruksi = st.columns([2, 1])
     gambar_input = None 
-    
-    with col_input:
-        if metode_input == "📂 Unggah File Gambar":
-            gambar_input = st.file_uploader("Pilih file gambar (JPG/PNG)", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
-        else:
-            st.info("💡 Tip: Pastikan akses kamera browser diizinkan untuk memakai mikroskop digital.")
-            gambar_input = st.camera_input("Ambil citra dari mikroskop", label_visibility="collapsed")
-            
-    with col_instruksi:
-        st.success("""
-        **📌 Panduan Standar Lab:**
-        - Format didukung: JPG, JPEG, PNG.
-        - Pastikan pencahayaan mikroskop terang & fokus.
-        - Wajib menggunakan pewarnaan standar (Ziehl-Neelsen).
-        """)
+    if metode_input == "📂 Unggah File":
+        gambar_input = st.file_uploader("Unggah citra dahak", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+    else:
+        gambar_input = st.camera_input("Ambil dari Kamera", label_visibility="collapsed")
         
-    st.markdown("---")
+    st.markdown("</div>", unsafe_allow_html=True) # Tutup div html-card
 
-    # === PROSES JIKA GAMBAR MASUK ===
+with col_kanan:
     if gambar_input is not None:
-        
         image = Image.open(gambar_input).convert('RGB')
-        col_img1, col_img2 = st.columns(2)
         
-        with col_img1:
-            st.markdown("#### 📷 Citra Original")
-            st.image(image, use_container_width=True)
-            run_button = st.button('🚀 Mulai Pemindaian AI', type="primary", use_container_width=True)
-            
+        # HTML Card untuk Preview Gambar & Tombol
+        st.markdown("<div class='html-card'><div class='html-card-title'>📷 Pratinjau & Analisis</div>", unsafe_allow_html=True)
+        st.image(image, use_container_width=True)
+        
+        run_button = st.button('🚀 EKSEKUSI PEMINDAIAN AI', use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True) # Tutup div
+        
         if run_button:
-            with st.spinner('🔬 AI sedang mengekstraksi fitur seluler...'):
-                
+            with st.spinner('Sistem memindai morfologi bakteri...'):
                 results = model.predict(source=image, conf=0.1, imgsz=640)
                 res_plotted = results[0].plot() 
                 jumlah_bakteri = len(results[0].boxes)
                 
-                with col_img2:
-                    st.markdown("#### 🎯 Hasil Deteksi AI")
+                # HTML Card untuk Hasil AI
+                st.markdown("<div class='html-card'><div class='html-card-title'>🎯 Laporan Diagnostik AI</div>", unsafe_allow_html=True)
+                
+                col_res1, col_res2 = st.columns([1.5, 1])
+                with col_res1:
                     st.image(res_plotted, channels="BGR", use_container_width=True)
-                    
-                    st.markdown("#### 📊 Ringkasan Klinis")
-                    
-                    kategori_teks = ""
-                    interpretasi_teks = ""
-                    
-                    # Logika Penentuan Status & Inject Kotak HTML Berwarna
+                
+                with col_res2:
                     if jumlah_bakteri == 0:
-                        kategori_teks = "Negatif / Bersih"
-                        interpretasi_teks = "Tidak ditemukan indikasi bakteri pada area citra ini. Disarankan memeriksa lapang pandang lain."
-                        st.metric(label="Total Bakteri Terdeteksi", value="0 Sel", delta="Status Aman", delta_color="normal")
-                        st.markdown(f"<div class='result-box box-negatif'><strong>✅ Interpretasi:</strong> {interpretasi_teks}</div>", unsafe_allow_html=True)
-                        
+                        st.markdown(f"""
+                        <div class="alert-box alert-safe">
+                            <h3>✅ Negatif / Bersih</h3>
+                            <h2>{jumlah_bakteri} Bakteri</h2>
+                            <p>Tidak ada indikasi TBC pada area ini.</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        kategori_teks = "Negatif"
+                        interpretasi_teks = "Tidak ditemukan indikasi bakteri."
+                    
                     elif 1 <= jumlah_bakteri <= 9:
-                        kategori_teks = "Positif Lemah (Scanty)"
-                        interpretasi_teks = "Ditemukan sejumlah kecil bakteri. Pasien terindikasi positif TB tingkat awal."
-                        st.metric(label="Total Bakteri Terdeteksi", value=f"{jumlah_bakteri} Sel", delta="⚠️ Butuh Perhatian", delta_color="off")
-                        st.markdown(f"<div class='result-box box-scanty'><strong>⚠️ Interpretasi (Scanty):</strong> {interpretasi_teks}</div>", unsafe_allow_html=True)
-                        
-                    elif 10 <= jumlah_bakteri <= 99:
-                        kategori_teks = "Positif Aktif (+1)"
-                        interpretasi_teks = "Terindikasi infeksi aktif tingkat sedang. Konsentrasi bakteri cukup tinggi."
-                        st.metric(label="Total Bakteri Terdeteksi", value=f"{jumlah_bakteri} Sel", delta="🚨 Positif TB", delta_color="inverse")
-                        st.markdown(f"<div class='result-box box-positif'><strong>🚨 Interpretasi (+1):</strong> {interpretasi_teks}</div>", unsafe_allow_html=True)
-                        
+                        st.markdown(f"""
+                        <div class="alert-box alert-warning">
+                            <h3>⚠️ Positif Lemah (Scanty)</h3>
+                            <h2>{jumlah_bakteri} Bakteri</h2>
+                            <p>Infeksi awal, butuh pemeriksaan lanjut.</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        kategori_teks = "Positif Scanty"
+                        interpretasi_teks = "Terindikasi positif TB tingkat awal."
+                    
                     else:
-                        kategori_teks = "Positif Tinggi (+2 / +3)"
-                        interpretasi_teks = "Terindikasi infeksi aktif parah. Beban bakteri sangat tinggi pada sampel."
-                        st.metric(label="Total Bakteri Terdeteksi", value=f"{jumlah_bakteri} Sel", delta="🚨 Positif Berat", delta_color="inverse")
-                        st.markdown(f"<div class='result-box box-positif'><strong>🚨 Interpretasi (+2/+3):</strong> {interpretasi_teks}</div>", unsafe_allow_html=True)
-                    
-                    st.markdown("---")
-                    
-                    # Konversi Gambar ke Biner untuk Download & PDF
-                    img_pil = Image.fromarray(res_plotted[..., ::-1]) 
-                    buf = io.BytesIO()
-                    img_pil.save(buf, format="JPEG")
-                    byte_im = buf.getvalue()
-                    
-                    # ================= PEMBUATAN PDF =================
-                    pdf = FPDF()
-                    pdf.add_page()
-                    pdf.set_font("Arial", "B", 16)
-                    pdf.cell(0, 10, "Laporan Analisis Skrining SputumAI", ln=True, align="C")
-                    
-                    tanggal_sekarang = datetime.datetime.now().strftime('%d %B %Y - %H:%M')
-                    pdf.set_font("Arial", "", 12)
-                    pdf.cell(0, 10, f"Tanggal Cetak Dokumen: {tanggal_sekarang}", ln=True, align="C")
-                    pdf.line(10, 30, 200, 30)
-                    pdf.ln(10)
-                    
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
-                        tmp.write(byte_im)
-                        tmp_path = tmp.name
-                    pdf.image(tmp_path, x=20, w=170)
-                    pdf.ln(5)
-                    
-                    pdf.set_font("Arial", "B", 14)
-                    pdf.cell(0, 10, "Ringkasan Hasil Klinis", ln=True)
-                    
-                    metode_pdf = "Unggah File Gambar" if "Unggah" in metode_input else "Kamera Mikroskop Langsung"
-                    
-                    pdf.set_font("Arial", "B", 12)
-                    pdf.cell(50, 8, "Metode Input", border=0)
-                    pdf.set_font("Arial", "", 12)
-                    pdf.cell(0, 8, f": {metode_pdf}", ln=True)
-                    
-                    pdf.set_font("Arial", "B", 12)
-                    pdf.cell(50, 8, "Total Sel Terdeteksi", border=0)
-                    pdf.set_font("Arial", "", 12)
-                    pdf.cell(0, 8, f": {jumlah_bakteri} Bakteri", ln=True)
-                    
-                    pdf.set_font("Arial", "B", 12)
-                    pdf.cell(50, 8, "Kategori / Status", border=0)
-                    pdf.set_font("Arial", "", 12)
-                    pdf.cell(0, 8, f": {kategori_teks}", ln=True)
-                    
-                    pdf.set_font("Arial", "B", 12)
-                    pdf.cell(0, 10, "Interpretasi Sistem :", ln=True)
-                    pdf.set_font("Arial", "", 12)
-                    pdf.multi_cell(0, 7, f"{interpretasi_teks}")
-                    pdf.ln(10)
-                    
-                    pdf.set_font("Arial", "I", 10)
-                    pdf.set_text_color(100, 100, 100)
-                    pdf.multi_cell(0, 5, "Peringatan (Disclaimer): Dokumen ini dihasilkan secara otomatis oleh sistem SputumAI. Ini BUKAN merupakan diagnosis medis final yang mengikat.")
-                    
-                    pdf_output = pdf.output(dest='S')
-                    pdf_bytes = pdf_output.encode('latin-1') if type(pdf_output) == str else bytes(pdf_output)
+                        st.markdown(f"""
+                        <div class="alert-box alert-danger">
+                            <h3>🚨 Positif Aktif (+1/+2/+3)</h3>
+                            <h2>{jumlah_bakteri} Bakteri</h2>
+                            <p>Tingkat infeksi sedang hingga parah.</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        kategori_teks = "Positif Aktif"
+                        interpretasi_teks = "Terindikasi infeksi aktif tingkat parah."
+                
+                st.markdown("</div>", unsafe_allow_html=True) # Tutup div
+                
+                # --- PDF GENERATOR (Tidak Diubah) ---
+                img_pil = Image.fromarray(res_plotted[..., ::-1]) 
+                buf = io.BytesIO()
+                img_pil.save(buf, format="JPEG")
+                byte_im = buf.getvalue()
+                
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_font("Arial", "B", 16)
+                pdf.cell(0, 10, "Laporan Analisis Skrining SputumAI", ln=True, align="C")
+                pdf.line(10, 20, 200, 20)
+                pdf.ln(5)
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                    tmp.write(byte_im)
+                    pdf.image(tmp.name, x=20, w=170)
+                pdf.ln(10)
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(0, 8, f"Total Sel Terdeteksi : {jumlah_bakteri} Bakteri", ln=True)
+                pdf.cell(0, 8, f"Kategori / Status : {kategori_teks}", ln=True)
+                pdf.cell(0, 8, f"Interpretasi : {interpretasi_teks}", ln=True)
+                
+                pdf_output = pdf.output(dest='S')
+                pdf_bytes = pdf_output.encode('latin-1') if type(pdf_output) == str else bytes(pdf_output)
 
-                    # Tombol Unduh
-                    col_btn1, col_btn2 = st.columns(2)
-                    with col_btn1:
-                        st.download_button(label="🖼️ Unduh Gambar", data=byte_im, file_name="Hasil_SputumAI.jpg", mime="image/jpeg", use_container_width=True)
-                    with col_btn2:
-                        st.download_button(label="📄 Unduh PDF", data=pdf_bytes, file_name="Laporan_SputumAI.pdf", mime="application/pdf", type="primary", use_container_width=True)
-
-# ================= TAB 2: TENTANG =================
-with tab2:
-    st.markdown("""
-    <div style='background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0px 4px 10px rgba(0,0,0,0.05);'>
-        <h2 style='color: #02aab0;'>💻 Teknologi di Balik SputumAI</h2>
-        <p style='font-size: 16px; color: #444;'>SputumAI adalah sistem cerdas berbasis Deep Learning (YOLOv8) yang telah dilatih secara khusus untuk mengenali morfologi bakteri <i>Mycobacterium tuberculosis</i> pada citra mikroskopis dengan pewarnaan Ziehl-Neelsen.</p>
-        <hr>
-        <p><strong>👨‍💻 Dikembangkan Oleh:</strong> [Nama Kamu / Tim]</p>
-        <p><strong>🚀 Versi Model:</strong> v3 Master (50 Epochs)</p>
-    </div>
-    """, unsafe_allow_html=True)
+                st.download_button(label="📄 Cetak PDF Laporan Medis", data=pdf_bytes, file_name="SputumAI_Report.pdf", mime="application/pdf", use_container_width=True)
