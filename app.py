@@ -9,7 +9,7 @@ from fpdf import FPDF
 # 1. Konfigurasi Halaman 
 st.set_page_config(page_title="SputumAI | Clinical Dashboard", page_icon="🔬", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. CSS MODERN CLINICAL DASHBOARD (Update Kontras - Saran 8)
+# 2. CSS MODERN CLINICAL DASHBOARD (Dengan Fix Anti-Dark Mode)
 custom_css = """
 <style>
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
@@ -17,13 +17,33 @@ custom_css = """
     
     .stApp { background-color: #f8fafc; font-family: 'Segoe UI', Roboto, sans-serif; }
 
+    /* ======================================================== */
+    /* FIX TEKS PUTIH HILANG (ANTI-DARK MODE)                   */
+    /* ======================================================== */
+    [data-testid="stMarkdownContainer"] p, 
+    [data-testid="stWidgetLabel"] p, 
+    [data-testid="stMarkdownContainer"] span, 
+    div[role="radiogroup"] label div,
+    .st-expanderContent p {
+        color: #334155 !important;
+    }
+    
+    /* Pengecualian agar teks di banner atas tetap putih */
+    .medical-header p {
+        color: #e2e8f0 !important;
+    }
+    /* Pengecualian teks dalam kotak hasil agar warnanya ngikut kotak */
+    .report-box p, .report-box h3, .report-box h2, .report-box div {
+        color: inherit !important;
+    }
+    /* ======================================================== */
+
     .medical-header {
         background: #0f172a; color: white; padding: 30px 40px; border-radius: 16px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-bottom: 25px;
         display: flex; justify-content: space-between; align-items: center; border-bottom: 5px solid #0ea5e9;
     }
     .medical-header h1 { margin: 0; font-size: 2.2rem; font-weight: 700; color: #ffffff;}
-    .medical-header p { margin: 5px 0 0 0; font-size: 1.1rem; color: #e2e8f0;} /* Kontras Ditingkatkan */
 
     .card {
         background: #ffffff; border-radius: 12px; padding: 25px;
@@ -35,20 +55,18 @@ custom_css = """
         display: flex; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;
     }
 
-    div[role="radiogroup"] label { color: #334155 !important; font-weight: 500; }
-
     .empty-state { text-align: center; padding: 60px 20px; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1; }
     .empty-state h3 { color: #475569; margin-top: 15px;}
-    .empty-state p { color: #94a3b8;}
+    .empty-state p { color: #94a3b8 !important;}
 
     .report-box { padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 6px solid; }
     .report-safe { background-color: #f0fdf4; border-color: #22c55e; color: #166534; }
     .report-warning { background-color: #fefce8; border-color: #eab308; color: #854d0e; }
     .report-danger { background-color: #fef2f2; border-color: #ef4444; color: #991b1b; }
-    .report-box h2 { font-size: 2.2rem; margin: 10px 0; color: inherit;}
-    .conf-score { font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; color: #334155; }
+    .report-box h2 { font-size: 2.2rem; margin: 10px 0;}
+    .conf-score { font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; }
     
-    .disclaimer { font-size: 0.85rem; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 15px;}
+    .disclaimer { font-size: 0.85rem; color: #64748b !important; text-align: center; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 15px;}
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
@@ -79,7 +97,6 @@ col_input, col_output = st.columns([1, 2.2], gap="large")
 # BAGIAN KIRI: PANEL INPUT
 with col_input:
     st.markdown("<div class='card'><div class='card-title'>📋 Metadata Pasien</div>", unsafe_allow_html=True)
-    # Saran 5: Formulir Metadata Pasien
     id_pasien = st.text_input("Nomor Rekam Medis / ID Anonim", placeholder="Contoh: RM-2026-08X")
     usia_pasien = st.number_input("Usia Pasien", min_value=1, max_value=120, value=30)
     st.markdown("</div>", unsafe_allow_html=True)
@@ -87,7 +104,6 @@ with col_input:
     st.markdown("<div class='card'><div class='card-title'>📥 Panel Input Citra</div>", unsafe_allow_html=True)
     metode_input = st.radio("Sumber Citra Mikroskopis:", ["📂 Unggah File (Drag & Drop)", "📸 Kamera Mikroskop"])
     
-    # Saran 2: Panduan Kualitas Citra Medis
     with st.expander("💡 Lihat Panduan Kualitas Citra"):
         st.write("- Pastikan gambar fokus (tidak blur).")
         st.write("- Pencahayaan terang dan merata.")
@@ -181,7 +197,7 @@ with col_output:
                 
                 st.markdown("<hr style='margin: 20px 0;'>", unsafe_allow_html=True)
                 
-                # PEMBUATAN PDF (Dengan Metadata)
+                # PEMBUATAN PDF
                 img_pil = Image.fromarray(res_plotted[..., ::-1]) 
                 buf = io.BytesIO()
                 img_pil.save(buf, format="JPEG")
@@ -194,7 +210,6 @@ with col_output:
                 pdf.line(10, 20, 200, 20)
                 pdf.ln(5)
                 
-                # Menambahkan Metadata Pasien ke PDF
                 pdf.set_font("Arial", "", 10)
                 pdf.cell(0, 6, f"ID / No. Rekam Medis : {id_pasien if id_pasien else 'Tidak Diisi'}", ln=True)
                 pdf.cell(0, 6, f"Usia Pasien          : {usia_pasien} Tahun", ln=True)
@@ -219,7 +234,6 @@ with col_output:
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-# Saran 6: Penafian Hukum Medis (Disclaimer)
 st.markdown("""
 <div class="disclaimer">
     <strong>DISCLAIMER MEDIS:</strong> Aplikasi SputumAI adalah alat bantu deteksi berbasis Artificial Intelligence dan tidak menggantikan keputusan medis profesional. 
