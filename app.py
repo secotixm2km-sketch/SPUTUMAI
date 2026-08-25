@@ -738,7 +738,7 @@ def generate_pdf_report(patient_info: dict, result_image: Image.Image, count: in
 
 
 # =============================================================================
-# 10. MAIN AREA — INPUT & WORKSPACE
+# 10. MAIN AREA & HASIL ANALISIS (DIGABUNG AGAR LANGSUNG MUNCUL)
 # =============================================================================
 def render_main_area(model, patient_info: dict):
     col_input, col_workspace = st.columns([1, 1.4], gap="medium")
@@ -747,10 +747,7 @@ def render_main_area(model, patient_info: dict):
     with col_input:
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown('<div class="card-title">📥 Sumber Citra</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="card-subtitle">Pilih metode input citra sediaan dahak mikroskopis</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="card-subtitle">Pilih metode input citra sediaan dahak mikroskopis</div>', unsafe_allow_html=True)
 
         input_mode = st.radio(
             "Metode Input",
@@ -773,23 +770,19 @@ def render_main_area(model, patient_info: dict):
 
         if uploaded_image is not None:
             st.session_state.input_image = uploaded_image
-            st.session_state.scan_done = False  # reset ketika gambar baru masuk
 
         st.markdown("</div>", unsafe_allow_html=True)
 
         if not ULTRALYTICS_AVAILABLE:
-            st.warning("⚠️ Modul `ultralytics` belum terpasang di environment ini.")
+            st.warning("⚠️ Modul `ultralytics` belum terpasang.")
         elif model is None:
-            st.warning(f"⚠️ Model `{MODEL_PATH}` tidak ditemukan. Pastikan file model tersedia di direktori aplikasi.")
+            st.warning(f"⚠️ Model `{MODEL_PATH}` tidak ditemukan.")
 
     # ------------------------- KOLOM WORKSPACE -------------------------------
     with col_workspace:
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown('<div class="card-title">🔬 Ruang Kerja Analisis</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="card-subtitle">Pratinjau citra dan eksekusi pemindaian AI</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="card-subtitle">Pratinjau citra dan eksekusi pemindaian AI</div>', unsafe_allow_html=True)
 
         if st.session_state.input_image is None:
             st.markdown(
@@ -803,12 +796,12 @@ def render_main_area(model, patient_info: dict):
                 unsafe_allow_html=True,
             )
         else:
-            st.image(st.session_state.input_image, use_container_width=True, caption="Citra Input — Belum Dianalisis")
+            st.image(st.session_state.input_image, use_container_width=True, caption="Citra Input (Original)")
             run_scan = st.button("🚀 Jalankan Pemindaian AI", use_container_width=True)
 
             if run_scan:
                 if model is None:
-                    st.error("Model AI tidak tersedia. Tidak dapat menjalankan pemindaian.")
+                    st.error("Model AI tidak tersedia.")
                 else:
                     with st.spinner("Menganalisis citra mikroskopis... AI sedang mendeteksi BTA."):
                         annotated_image, count, avg_conf, confidences = run_inference(
@@ -819,10 +812,83 @@ def render_main_area(model, patient_info: dict):
                     st.session_state.avg_confidence = avg_conf
                     st.session_state.detections = confidences
                     st.session_state.scan_done = True
-                    st.toast("✅ Pemindaian AI selesai! Hasil siap ditinjau.", icon="✅")
-                    st.rerun()
+                    st.toast("✅ Pemindaian AI selesai!", icon="✅")
 
         st.markdown("</div>", unsafe_allow_html=True)
+
+    # =========================================================================
+    # BAGIAN HASIL (MUNCUL OTOMATIS TEPAT DI BAWAH KETIKA SCAN SELESAI)
+    # =========================================================================
+    if st.session_state.scan_done and st.session_state.result_image is not None:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<div class="card-title">📊 Hasil Pemeriksaan & Laporan Klinis</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card-subtitle">Tinjau hasil deteksi visual dan laporan interpretasi klinis</div>', unsafe_allow_html=True)
+
+        tab_visual, tab_report = st.tabs(["🖼️ Analisis Visual", "📋 Laporan Klinis"])
+
+        count = st.session_state.bta_count
+        avg_conf = st.session_state.avg_confidence
+        category, css_class, label, description = get_diagnosis_class(count)
+
+        # TAB 1: ANALISIS VISUAL
+        with tab_visual:
+            col_a, col_b = st.columns(2, gap="medium")
+            with col_a:
+                st.image(st.session_state.input_image, use_container_width=True)
+                st.markdown('<div class="img-caption">Citra Asli (Original)</div>', unsafe_allow_html=True)
+            with col_b:
+                st.image(st.session_state.result_image, use_container_width=True)
+                st.markdown('<div class="img-caption">Hasil Deteksi AI (Annotated)</div>', unsafe_allow_html=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            m1, m2, m3 = st.columns(3)
+            with m1:
+                st.markdown(f'<div class="metric-mini"><div class="val">{count}</div><div class="lbl">Total BTA Terdeteksi</div></div>', unsafe_allow_html=True)
+            with m2:
+                st.markdown(f'<div class="metric-mini"><div class="val">{avg_conf:.1f}%</div><div class="lbl">Rata-rata Confidence</div></div>', unsafe_allow_html=True)
+            with m3:
+                st.markdown(f'<div class="metric-mini"><div class="val">{category.upper()}</div><div class="lbl">Kategori Sementara</div></div>', unsafe_allow_html=True)
+
+        # TAB 2: LAPORAN KLINIS
+        with tab_report:
+            st.markdown(
+                f"""
+                <div class="diagnosis-box {css_class}">
+                    <div class="diagnosis-title">{label}</div>
+                    <div class="diagnosis-desc">{description}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown("##### Visualisasi Confidence Score Model AI")
+            render_progress_bar("Rata-rata Confidence Score Deteksi", avg_conf)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("##### Ringkasan Data Pemeriksaan")
+            info_col1, info_col2 = st.columns(2)
+            with info_col1:
+                st.markdown(f"**Nomor Rekam Medis:** {patient_info['rm_number']}")
+                st.markdown(f"**Usia Pasien:** {patient_info['age']} tahun")
+            with info_col2:
+                st.markdown(f"**Jenis Kelamin:** {patient_info['gender']}")
+                st.markdown(f"**Waktu Analisis:** {datetime.now().strftime('%d %B %Y, %H:%M:%S')}")
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # Tombol Unduh Laporan PDF
+            pdf_bytes = generate_pdf_report(patient_info, st.session_state.result_image, count, avg_conf)
+            file_name = f"Laporan_SputumAI_{patient_info['rm_number'].replace(' ', '_')}.pdf"
+
+            st.download_button(
+                label="⬇️ Unduh Laporan Medis (PDF)",
+                data=pdf_bytes,
+                file_name=file_name,
+                mime="application/pdf",
+                use_container_width=True,
+            )
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 # =============================================================================
