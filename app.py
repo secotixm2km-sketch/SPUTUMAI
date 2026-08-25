@@ -885,7 +885,7 @@ def render_main_area(model, patient_info: dict):
             pdf_bytes = generate_pdf_report(patient_info, st.session_state.result_image, count, avg_conf)
             file_name = f"Laporan_SputumAI_{patient_info['rm_number'].replace(' ', '_')}.pdf"
 
-                st.download_button(
+            st.download_button(
                 label="⬇️ Unduh Laporan Medis (PDF)",
                 data=pdf_bytes,
                 file_name=file_name,
