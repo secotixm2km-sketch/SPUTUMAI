@@ -104,11 +104,17 @@ with col_input:
     st.markdown("<div class='card'><div class='card-title'>📥 Panel Input Citra</div>", unsafe_allow_html=True)
     metode_input = st.radio("Sumber Citra Mikroskopis:", ["📂 Unggah File (Drag & Drop)", "📸 Kamera Mikroskop"])
     
-    with st.expander("💡 Lihat Panduan Kualitas Citra"):
-        st.write("- Pastikan gambar fokus (tidak blur).")
-        st.write("- Pencahayaan terang dan merata.")
-        st.write("- Gunakan pewarnaan Ziehl-Neelsen (ZN).")
-        st.write("- Resolusi disarankan: minimal 800x600 px.")
+with st.expander("💡 Lihat Panduan Kualitas Citra"):
+        st.markdown("""
+        <div style="background-color: #f1f5f9; padding: 15px; border-radius: 8px; color: #0f172a; border: 1px solid #cbd5e1;">
+            <ul style="margin-bottom: 0; padding-left: 20px;">
+                <li>Pastikan gambar <b>fokus</b> (tidak blur).</li>
+                <li>Pencahayaan terang dan merata.</li>
+                <li>Gunakan pewarnaan <b>Ziehl-Neelsen (ZN)</b>.</li>
+                <li>Resolusi disarankan: minimal 800x600 px.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
     
     gambar_input = None 
     if "Unggah File" in metode_input:
@@ -197,7 +203,9 @@ with col_output:
                 
                 st.markdown("<hr style='margin: 20px 0;'>", unsafe_allow_html=True)
                 
-                # PEMBUATAN PDF
+# ========================================================
+                # PEMBUATAN PDF (FIX ERROR FPDF IMAGE)
+                # ========================================================
                 img_pil = Image.fromarray(res_plotted[..., ::-1]) 
                 buf = io.BytesIO()
                 img_pil.save(buf, format="JPEG")
@@ -216,11 +224,22 @@ with col_output:
                 pdf.cell(0, 6, f"Tanggal Pemeriksaan  : {datetime.datetime.now().strftime('%d-%m-%Y %H:%M')}", ln=True)
                 pdf.ln(5)
 
+                # PERBAIKAN DI SINI:
+                # 1. Tulis gambar dan PASTIKAN file ditutup (exit with block) agar tersimpan 100% ke disk
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
                     tmp.write(byte_im)
-                    pdf.image(tmp.name, x=20, w=170)
+                    tmp_path = tmp.name
+
+                # 2. Baru panggil gambar dari file fisik yang sudah siap di disk
+                pdf.image(tmp_path, x=20, w=170)
                 pdf.ln(10)
                 
+                # 3. (Opsional) Hapus file temporary agar server Streamlit Cloud tidak penuh
+                try:
+                    os.remove(tmp_path)
+                except:
+                    pass
+
                 pdf.set_font("Arial", "B", 12)
                 pdf.cell(0, 8, f"Total BTA Terdeteksi : {jumlah_bakteri} Sel", ln=True)
                 pdf.cell(0, 8, f"Confidence Score     : {conf_text}", ln=True)
