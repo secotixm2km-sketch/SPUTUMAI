@@ -4,40 +4,38 @@ from PIL import Image
 import io
 import datetime
 import tempfile
+import os
 from fpdf import FPDF
 
-# 1. Konfigurasi Halaman 
+# =====================================================================
+# 1. KONFIGURASI HALAMAN (WAJIB PALING ATAS)
+# =====================================================================
 st.set_page_config(page_title="SputumAI | Clinical Dashboard", page_icon="🔬", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. CSS MODERN CLINICAL DASHBOARD (Dengan Fix Anti-Dark Mode)
+# =====================================================================
+# 2. CSS MODERN CLINICAL DASHBOARD & ANTI-DARK MODE
+# =====================================================================
 custom_css = """
 <style>
+    /* Sembunyikan elemen bawaan Streamlit */
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .block-container {padding: 1.5rem 2rem; max-width: 100%;}
     
     .stApp { background-color: #f8fafc; font-family: 'Segoe UI', Roboto, sans-serif; }
 
-    /* ======================================================== */
-    /* FIX TEKS PUTIH HILANG (ANTI-DARK MODE)                   */
-    /* ======================================================== */
+    /* FIX TEKS PUTIH HILANG (ANTI-DARK MODE) */
     [data-testid="stMarkdownContainer"] p, 
     [data-testid="stWidgetLabel"] p, 
     [data-testid="stMarkdownContainer"] span, 
-    div[role="radiogroup"] label div,
-    .st-expanderContent p {
+    div[role="radiogroup"] label div {
         color: #334155 !important;
     }
     
-    /* Pengecualian agar teks di banner atas tetap putih */
-    .medical-header p {
-        color: #e2e8f0 !important;
-    }
-    /* Pengecualian teks dalam kotak hasil agar warnanya ngikut kotak */
-    .report-box p, .report-box h3, .report-box h2, .report-box div {
-        color: inherit !important;
-    }
-    /* ======================================================== */
+    /* Pengecualian warna teks spesifik */
+    .medical-header p { color: #e2e8f0 !important; }
+    .report-box p, .report-box h3, .report-box h2, .report-box div { color: inherit !important; }
 
+    /* Desain Banner & Kartu */
     .medical-header {
         background: #0f172a; color: white; padding: 30px 40px; border-radius: 16px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-bottom: 25px;
@@ -55,6 +53,7 @@ custom_css = """
         display: flex; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;
     }
 
+    /* Status & Hasil */
     .empty-state { text-align: center; padding: 60px 20px; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1; }
     .empty-state h3 { color: #475569; margin-top: 15px;}
     .empty-state p { color: #94a3b8 !important;}
@@ -71,7 +70,9 @@ custom_css = """
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# HEADER UTAMA
+# =====================================================================
+# 3. HEADER & LOAD MODEL
+# =====================================================================
 st.markdown("""
 <div class="medical-header">
     <div>
@@ -89,12 +90,15 @@ def load_model():
 try:
     model = load_model()
 except:
-    st.error("Model best.pt tidak ditemukan!")
+    st.error("Model best.pt tidak ditemukan! Pastikan file berada di folder yang sama.")
     st.stop()
 
+# =====================================================================
+# 4. LAYOUT UTAMA (KIRI DAN KANAN)
+# =====================================================================
 col_input, col_output = st.columns([1, 2.2], gap="large")
 
-# BAGIAN KIRI: PANEL INPUT
+# ----------------- PANEL KIRI (INPUT) -----------------
 with col_input:
     st.markdown("<div class='card'><div class='card-title'>📋 Metadata Pasien</div>", unsafe_allow_html=True)
     id_pasien = st.text_input("Nomor Rekam Medis / ID Anonim", placeholder="Contoh: RM-2026-08X")
@@ -104,10 +108,10 @@ with col_input:
     st.markdown("<div class='card'><div class='card-title'>📥 Panel Input Citra</div>", unsafe_allow_html=True)
     metode_input = st.radio("Sumber Citra Mikroskopis:", ["📂 Unggah File (Drag & Drop)", "📸 Kamera Mikroskop"])
     
-with st.expander("💡 Lihat Panduan Kualitas Citra"):
+    with st.expander("💡 Lihat Panduan Kualitas Citra"):
         st.markdown("""
         <div style="background-color: #f1f5f9; padding: 15px; border-radius: 8px; color: #0f172a; border: 1px solid #cbd5e1;">
-            <ul style="margin-bottom: 0; padding-left: 20px;">
+            <ul style="margin-bottom: 0; padding-left: 20px; font-size: 14px;">
                 <li>Pastikan gambar <b>fokus</b> (tidak blur).</li>
                 <li>Pencahayaan terang dan merata.</li>
                 <li>Gunakan pewarnaan <b>Ziehl-Neelsen (ZN)</b>.</li>
@@ -116,7 +120,11 @@ with st.expander("💡 Lihat Panduan Kualitas Citra"):
         </div>
         """, unsafe_allow_html=True)
     
+    st.write("") # Spasi pemisah
+    
+    # Variabel disiapkan dengan indentasi yang benar
     gambar_input = None 
+    
     if "Unggah File" in metode_input:
         gambar_input = st.file_uploader("Upload sampel dahak", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
     else:
@@ -124,7 +132,7 @@ with st.expander("💡 Lihat Panduan Kualitas Citra"):
         
     st.markdown("</div>", unsafe_allow_html=True)
 
-# BAGIAN KANAN: PANEL OUTPUT
+# ----------------- PANEL KANAN (OUTPUT) -----------------
 with col_output:
     if gambar_input is None:
         st.markdown("""
@@ -133,7 +141,7 @@ with col_output:
             <div class="empty-state">
                 <div style="font-size: 4rem;">🩺</div>
                 <h3>Menunggu Input Citra Medis</h3>
-                <p>Silakan lengkapi metadata dan unggah sampel dahak di panel sebelah kiri (mendukung fitur Drag & Drop).</p>
+                <p>Silakan lengkapi metadata dan unggah sampel dahak di panel sebelah kiri untuk memulai.</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -149,12 +157,14 @@ with col_output:
             
         else:
             with st.spinner('AI sedang memetakan morfologi bakteri...'):
+                
+                # Proses YOLO
                 results = model.predict(source=image, conf=0.1, imgsz=640)
                 res_plotted = results[0].plot() 
-                
                 boxes = results[0].boxes
                 jumlah_bakteri = len(boxes)
                 
+                # Kalkulasi Confidence Score
                 if jumlah_bakteri > 0:
                     conf_list = boxes.conf.tolist()
                     avg_conf = (sum(conf_list) / len(conf_list)) * 100
@@ -162,12 +172,14 @@ with col_output:
                 else:
                     conf_text = "N/A"
                 
+                # Tampilkan Gambar Side-by-Side
                 col_g1, col_g2 = st.columns(2)
                 with col_g1:
                     st.image(image, caption="Citra Original", use_container_width=True)
                 with col_g2:
                     st.image(res_plotted, channels="BGR", caption="Deteksi AI (Bounding Box)", use_container_width=True)
                 
+                # Logika Penentuan Status Klinis
                 if jumlah_bakteri == 0:
                     st.markdown(f"""
                     <div class="report-box report-safe">
@@ -185,7 +197,7 @@ with col_output:
                         <h3>⚠️ Hasil: Positif Lemah (Scanty)</h3>
                         <h2>{jumlah_bakteri} Sel BTA</h2>
                         <div class="conf-score">Confidence Score: {conf_text}</div>
-                        <p><strong>Interpretasi:</strong> Indikasi infeksi awal (1-9 BTA).</p>
+                        <p><strong>Interpretasi:</strong> Indikasi infeksi awal (1-9 BTA). Perlu observasi lebih lanjut.</p>
                     </div>
                     """, unsafe_allow_html=True)
                     kat_pdf, intp_pdf = "Positif (Scanty)", "Indikasi infeksi awal."
@@ -203,8 +215,8 @@ with col_output:
                 
                 st.markdown("<hr style='margin: 20px 0;'>", unsafe_allow_html=True)
                 
-# ========================================================
-                # PEMBUATAN PDF (FIX ERROR FPDF IMAGE)
+                # ========================================================
+                # PEMBUATAN PDF (FIXED ERROR DISK SAVE)
                 # ========================================================
                 img_pil = Image.fromarray(res_plotted[..., ::-1]) 
                 buf = io.BytesIO()
@@ -218,28 +230,28 @@ with col_output:
                 pdf.line(10, 20, 200, 20)
                 pdf.ln(5)
                 
+                # Data Pasien
                 pdf.set_font("Arial", "", 10)
                 pdf.cell(0, 6, f"ID / No. Rekam Medis : {id_pasien if id_pasien else 'Tidak Diisi'}", ln=True)
                 pdf.cell(0, 6, f"Usia Pasien          : {usia_pasien} Tahun", ln=True)
                 pdf.cell(0, 6, f"Tanggal Pemeriksaan  : {datetime.datetime.now().strftime('%d-%m-%Y %H:%M')}", ln=True)
                 pdf.ln(5)
 
-                # PERBAIKAN DI SINI:
-                # 1. Tulis gambar dan PASTIKAN file ditutup (exit with block) agar tersimpan 100% ke disk
+                # Menyimpan gambar sementara & memastikan tertutup sebelum PDF membacanya
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
                     tmp.write(byte_im)
                     tmp_path = tmp.name
 
-                # 2. Baru panggil gambar dari file fisik yang sudah siap di disk
                 pdf.image(tmp_path, x=20, w=170)
                 pdf.ln(10)
                 
-                # 3. (Opsional) Hapus file temporary agar server Streamlit Cloud tidak penuh
+                # Menghapus gambar sementara dari server agar tidak penuh
                 try:
                     os.remove(tmp_path)
                 except:
                     pass
-
+                
+                # Hasil Diagnosis
                 pdf.set_font("Arial", "B", 12)
                 pdf.cell(0, 8, f"Total BTA Terdeteksi : {jumlah_bakteri} Sel", ln=True)
                 pdf.cell(0, 8, f"Confidence Score     : {conf_text}", ln=True)
@@ -253,6 +265,9 @@ with col_output:
 
         st.markdown("</div>", unsafe_allow_html=True)
 
+# =====================================================================
+# 5. DISCLAIMER MEDIS (Paling Bawah)
+# =====================================================================
 st.markdown("""
 <div class="disclaimer">
     <strong>DISCLAIMER MEDIS:</strong> Aplikasi SputumAI adalah alat bantu deteksi berbasis Artificial Intelligence dan tidak menggantikan keputusan medis profesional. 
