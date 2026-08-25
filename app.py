@@ -10,85 +10,50 @@ from fpdf import FPDF
 st.set_page_config(page_title="SputumAI | Clinical Dashboard", page_icon="🔬", layout="wide", initial_sidebar_state="collapsed")
 
 # =====================================================================
-# 2. CSS MODERN CLINICAL DASHBOARD (Lebih Bersih & Profesional)
+# 2. CSS MODERN CLINICAL DASHBOARD
 # =====================================================================
 custom_css = """
 <style>
-    /* Sembunyikan elemen default Streamlit */
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .block-container {padding: 1.5rem 2rem; max-width: 100%;}
     
-    /* Background Utama */
-    .stApp {
-        background-color: #f8fafc;
-        font-family: 'Segoe UI', Roboto, sans-serif;
-    }
+    .stApp { background-color: #f8fafc; font-family: 'Segoe UI', Roboto, sans-serif; }
 
-    /* Banner Header Medis */
     .medical-header {
-        background: #0f172a; /* Warna Navy Blue Gelap */
-        color: white;
-        padding: 30px 40px;
-        border-radius: 16px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        margin-bottom: 25px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 5px solid #0ea5e9;
+        background: #0f172a; color: white; padding: 30px 40px; border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-bottom: 25px;
+        display: flex; justify-content: space-between; align-items: center; border-bottom: 5px solid #0ea5e9;
     }
     .medical-header h1 { margin: 0; font-size: 2.2rem; font-weight: 700; color: #ffffff;}
     .medical-header p { margin: 5px 0 0 0; font-size: 1.1rem; color: #94a3b8;}
 
-    /* Kartu Pembungkus (Cards) */
     .card {
-        background: #ffffff;
-        border-radius: 12px;
-        padding: 25px;
+        background: #ffffff; border-radius: 12px; padding: 25px;
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-        border: 1px solid #e2e8f0;
-        margin-bottom: 20px;
+        border: 1px solid #e2e8f0; margin-bottom: 20px;
     }
     .card-title {
-        font-size: 1.2rem;
-        font-weight: 600;
-        color: #1e293b;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        border-bottom: 2px solid #f1f5f9;
-        padding-bottom: 10px;
+        font-size: 1.2rem; font-weight: 600; color: #1e293b; margin-bottom: 20px;
+        display: flex; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;
     }
 
-    /* Memperbaiki Teks Radio Button yang Menghilang */
-    div[role="radiogroup"] label {
-        color: #334155 !important;
-        font-weight: 500;
-    }
+    div[role="radiogroup"] label { color: #334155 !important; font-weight: 500; }
 
-    /* Tampilan "Menunggu Gambar" (Empty State) */
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        background: #f8fafc;
-        border-radius: 12px;
-        border: 2px dashed #cbd5e1;
-    }
+    .empty-state { text-align: center; padding: 60px 20px; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1; }
     .empty-state h3 { color: #475569; margin-top: 15px;}
     .empty-state p { color: #94a3b8;}
 
-    /* Kotak Laporan Hasil */
     .report-box { padding: 20px; border-radius: 8px; margin-top: 20px; border-left: 6px solid; }
     .report-safe { background-color: #f0fdf4; border-color: #22c55e; color: #166534; }
     .report-warning { background-color: #fefce8; border-color: #eab308; color: #854d0e; }
     .report-danger { background-color: #fef2f2; border-color: #ef4444; color: #991b1b; }
     .report-box h2 { font-size: 2.2rem; margin: 10px 0; color: inherit;}
+    .conf-score { font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; color: #334155; }
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 # =====================================================================
 
-# HEADER UTAMA
 st.markdown("""
 <div class="medical-header">
     <div>
@@ -99,7 +64,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Load Model
 @st.cache_resource
 def load_model():
     return YOLO('best.pt')
@@ -110,15 +74,12 @@ except:
     st.error("Model best.pt tidak ditemukan!")
     st.stop()
 
-# ================= PEMBAGIAN LAYOUT (1:2) =================
 col_input, col_output = st.columns([1, 2.2], gap="large")
 
-# BAGIAN KIRI: PANEL INPUT
 with col_input:
     st.markdown("<div class='card'><div class='card-title'>📥 Panel Input Data</div>", unsafe_allow_html=True)
-    
     metode_input = st.radio("Sumber Citra Mikroskopis:", ["📂 Unggah File", "📸 Kamera Mikroskop"])
-    st.write("") # Spasi
+    st.write("") 
     
     gambar_input = None 
     if metode_input == "📂 Unggah File":
@@ -128,10 +89,8 @@ with col_input:
         
     st.markdown("</div>", unsafe_allow_html=True)
 
-# BAGIAN KANAN: PANEL OUTPUT & ANALISIS
 with col_output:
     if gambar_input is None:
-        # TAMPILAN JIKA BELUM ADA GAMBAR (Supaya tidak kosong melompong)
         st.markdown("""
         <div class="card">
             <div class="card-title">🖥️ Ruang Analisis AI</div>
@@ -144,9 +103,7 @@ with col_output:
         """, unsafe_allow_html=True)
         
     else:
-        # TAMPILAN JIKA GAMBAR SUDAH MASUK
         image = Image.open(gambar_input).convert('RGB')
-        
         st.markdown("<div class='card'><div class='card-title'>🖥️ Hasil Analisis AI</div>", unsafe_allow_html=True)
         
         run_button = st.button('🚀 EKSEKUSI PEMINDAIAN', type="primary", use_container_width=True)
@@ -158,21 +115,34 @@ with col_output:
             with st.spinner('AI sedang memetakan morfologi bakteri...'):
                 results = model.predict(source=image, conf=0.1, imgsz=640)
                 res_plotted = results[0].plot() 
-                jumlah_bakteri = len(results[0].boxes)
                 
-                # Tampilkan Gambar Original vs AI Bersebelahan
+                boxes = results[0].boxes
+                jumlah_bakteri = len(boxes)
+                
+                # ========================================================
+                # MENGHITUNG CONFIDENCE SCORE
+                # ========================================================
+                if jumlah_bakteri > 0:
+                    # Mengubah tensor YOLO ke list, menjumlahkan, dan mencari rata-ratanya
+                    conf_list = boxes.conf.tolist()
+                    avg_conf = (sum(conf_list) / len(conf_list)) * 100
+                    conf_text = f"{avg_conf:.1f}%"
+                else:
+                    conf_text = "N/A"
+                # ========================================================
+                
                 col_g1, col_g2 = st.columns(2)
                 with col_g1:
                     st.image(image, caption="Citra Original", use_container_width=True)
                 with col_g2:
                     st.image(res_plotted, channels="BGR", caption="Deteksi AI (Bounding Box)", use_container_width=True)
                 
-                # Kotak Hasil Kesimpulan Klinis
                 if jumlah_bakteri == 0:
                     st.markdown(f"""
                     <div class="report-box report-safe">
                         <h3>✅ Hasil: Negatif (Bersih)</h3>
                         <h2>{jumlah_bakteri} Sel BTA</h2>
+                        <div class="conf-score">Confidence Score: {conf_text}</div>
                         <p><strong>Interpretasi:</strong> Tidak ditemukan indikasi bakteri pada lapang pandang ini. Lanjutkan ke area pandang lainnya.</p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -183,6 +153,7 @@ with col_output:
                     <div class="report-box report-warning">
                         <h3>⚠️ Hasil: Positif Lemah (Scanty)</h3>
                         <h2>{jumlah_bakteri} Sel BTA</h2>
+                        <div class="conf-score">Confidence Score: {conf_text}</div>
                         <p><strong>Interpretasi:</strong> Indikasi infeksi awal (1-9 BTA). Perlu observasi lebih lanjut dan uji klinis tambahan.</p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -193,6 +164,7 @@ with col_output:
                     <div class="report-box report-danger">
                         <h3>🚨 Hasil: Positif Aktif (+1 / +2 / +3)</h3>
                         <h2>{jumlah_bakteri} Sel BTA</h2>
+                        <div class="conf-score">Confidence Score: {conf_text}</div>
                         <p><strong>Interpretasi:</strong> Beban bakteri sangat tinggi. Terindikasi infeksi aktif parah.</p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -218,6 +190,7 @@ with col_output:
                 pdf.ln(10)
                 pdf.set_font("Arial", "B", 12)
                 pdf.cell(0, 8, f"Total BTA Terdeteksi : {jumlah_bakteri} Sel", ln=True)
+                pdf.cell(0, 8, f"Confidence Score     : {conf_text}", ln=True) # Tambahan PDF
                 pdf.cell(0, 8, f"Kategori Analisis    : {kat_pdf}", ln=True)
                 pdf.cell(0, 8, f"Interpretasi Sistem  : {intp_pdf}", ln=True)
                 
@@ -226,4 +199,4 @@ with col_output:
 
                 st.download_button(label="📄 Cetak PDF Laporan Medis", data=pdf_bytes, file_name="SputumAI_Report.pdf", mime="application/pdf", use_container_width=True)
 
-        st.markdown("</div>", unsafe_allow_html=True) # Tutup Card Analisis
+        st.markdown("</div>", unsafe_allow_html=True)
