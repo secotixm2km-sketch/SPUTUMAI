@@ -61,7 +61,7 @@ def inject_custom_css():
         .progress-track { width: 100%; height: 12px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin-top: 6px; }
         .progress-fill { height: 100%; background: linear-gradient(90deg, #0ea5e9, #1e3a8a); }
         
-        /* PERBAIKAN: Memastikan teks pilihan ganda (radio button) terlihat jelas */
+        /* FIX: Memastikan teks pilihan ganda (radio button) terlihat jelas */
         [data-testid="stMarkdownContainer"] p {
             color: #1e293b !important; 
         }
@@ -85,7 +85,7 @@ with st.sidebar:
     st.caption("Platform Penanganan TBC Terpadu")
     st.markdown("---")
     
-    # PERBAIKAN: Fungsi untuk menangani perubahan menu secara programatik
+    # Fungsi untuk mengubah menu secara programatik
     def change_menu():
         st.session_state.current_menu = st.session_state.menu_selector
 
@@ -93,18 +93,27 @@ with st.sidebar:
     if "current_menu" not in st.session_state:
         st.session_state.current_menu = "📊 Dashboard Epidemiologi"
 
-    # Widget radio button dengan on_change callback
-    st.radio("Pilih Modul Navigasi:", [
+    # Daftar menu
+    menu_options = [
         "📊 Dashboard Epidemiologi",
         "🔬 Workspace AI (Deteksi & PDF)", 
         "🗺️ Peta Rujukan Faskes", 
         "📚 Pusat Edukasi & Kuis"
-    ], key="menu_selector", index=["📊 Dashboard Epidemiologi", "🔬 Workspace AI (Deteksi & PDF)", "🗺️ Peta Rujukan Faskes", "📚 Pusat Edukasi & Kuis"].index(st.session_state.current_menu), on_change=change_menu)
+    ]
+    
+    # Widget radio button dengan on_change callback
+    st.radio(
+        "Pilih Modul Navigasi:", 
+        menu_options, 
+        key="menu_selector", 
+        index=menu_options.index(st.session_state.current_menu), 
+        on_change=change_menu
+    )
     
     st.markdown("---")
     st.info("🔒 Sistem terenkripsi untuk menjaga privasi pasien sesuai standar etika medis.")
 
-# Variabel 'menu' sekarang mengambil dari session_state
+# Set menu yang aktif
 menu = st.session_state.current_menu
 
 # =============================================================================
@@ -318,17 +327,19 @@ elif menu == "🔬 Workspace AI (Deteksi & PDF)":
                 </div>
             """, unsafe_allow_html=True)
 
-        if st.session_state.get("diagnosis_category") in ["scanty", "positive"]:
+            if st.session_state.get("diagnosis_category") in ["scanty", "positive"]:
+                # Kotak Peringatan Kustom agar teks tidak transparan
                 st.markdown("""
                     <div style="background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; border-left: 5px solid #ffeeba; margin-bottom: 15px;">
                         ⚠️ <b>Hasil skrining menunjukkan indikasi TBC.</b> Segera arahkan pasien ke fasilitas rujukan terdekat.
                     </div>
                 """, unsafe_allow_html=True)
                 
-                # PERBAIKAN: Mengubah state secara aman
+                # Fungsi untuk pindah halaman
                 def go_to_map():
                     st.session_state.current_menu = "🗺️ Peta Rujukan Faskes"
 
+                # Tombol Rujukan
                 st.button("🗺️ Buka Peta Rujukan Berdasarkan Hasil Ini", use_container_width=True, on_click=go_to_map)
 
             st.write("**Visualisasi Confidence Score:**")
