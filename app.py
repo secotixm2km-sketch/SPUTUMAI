@@ -327,21 +327,62 @@ elif menu == "🗺️ Peta Rujukan Faskes":
     </div>
     """, unsafe_allow_html=True)
 
-    st.info("💡 **Petunjuk:** Klik ikon rumah sakit atau klinik pada peta di bawah ini untuk melihat biodata Dokter Spesialis, fasilitas layanan TBC, dan nomor telepon rujukan.")
+    st.info("💡 **Petunjuk:** Klik ikon marker pada peta di bawah ini untuk melihat profil lengkap, alamat, jadwal dokter spesialis, serta kontak darurat faskes.")
     
     m = folium.Map(location=[-7.9666, 112.6326], zoom_start=13)
+    
+    # Data Rumah Sakit & Dokter dengan Biodata Lengkap
     hospitals = [
-        {"name": "RSUD Dr. Saiful Anwar (RSSA)", "lat": -7.9723, "lon": 112.6300, "color": "red", "icon": "hospital-o",
-         "html": "<b>🏥 RSUD Dr. Saiful Anwar</b><hr><b>Spesialis:</b> dr. Susilo, Sp.P(K)<br><b>Layanan:</b> TBC RO, GeneXpert<br><br><a href='tel:0341362101' target='_blank' style='background:#22c55e; color:white; padding:5px; border-radius:5px; text-decoration:none;'>📞 Telepon Rujukan</a>"},
-        {"name": "Rumah Sakit Paru Batu", "lat": -7.8715, "lon": 112.5269, "color": "red", "icon": "h-square",
-         "html": "<b>🏥 RS Paru Batu</b><hr><b>Spesialis:</b> dr. Hidayat, Sp.P<br><b>Layanan:</b> Rawat Inap Isolasi TBC<br><br><a href='tel:0341596881' target='_blank' style='background:#22c55e; color:white; padding:5px; border-radius:5px; text-decoration:none;'>📞 Telepon Rujukan</a>"},
-        {"name": "Klinik Paru Medika Malang", "lat": -7.9555, "lon": 112.6150, "color": "blue", "icon": "user-md",
-         "html": "<b>🩺 Klinik Paru Medika</b><hr><b>Spesialis:</b> dr. Anita, Sp.P<br><b>Layanan:</b> Skrining Awal<br><br><a href='https://wa.me/628123456789' target='_blank' style='background:#22c55e; color:white; padding:5px; border-radius:5px; text-decoration:none;'>💬 Hubungi via WhatsApp</a>"}
+        {
+            "name": "RSUD Dr. Saiful Anwar (RSSA) Malang", 
+            "lat": -7.9723, "lon": 112.6300, "color": "red", "icon": "hospital-o",
+            "html": """
+                <div style="font-family: 'Segoe UI', sans-serif; width: 270px; font-size: 13px; color: #1e293b;">
+                    <b style="color: #0f172a; font-size: 14px;">🏥 RSUD Dr. Saiful Anwar (RSSA)</b><hr style="margin:5px 0; border-color:#e2e8f0;">
+                    <b>Alamat:</b> Jl. Jaksa Agung Suprapto No.2, Malang<br>
+                    <b>Dokter Spesialis:</b> dr. Susilo, Sp.P(K) (Konsultan Paru)<br>
+                    <b>Fasilitas:</b> Poli DOTS, TBC RO, GeneXpert<br>
+                    <b>Jam Operasional:</b> Senin - Sabtu (08:00 - 14:00)<br>
+                    <b>No. Telepon:</b> (0341) 362101<br><br>
+                    <a href='tel:0341362101' target='_blank' style='background:#22c55e; color:white; padding:6px 12px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;'>📞 Telepon Rumah Sakit</a>
+                </div>
+            """
+        },
+        {
+            "name": "Rumah Sakit Paru Batu", 
+            "lat": -7.8715, "lon": 112.5269, "color": "red", "icon": "h-square",
+            "html": """
+                <div style="font-family: 'Segoe UI', sans-serif; width: 270px; font-size: 13px; color: #1e293b;">
+                    <b style="color: #0f172a; font-size: 14px;">🏥 Rumah Sakit Paru Batu</b><hr style="margin:5px 0; border-color:#e2e8f0;">
+                    <b>Alamat:</b> Jl. A. Yani No.149, Batu<br>
+                    <b>Dokter Spesialis:</b> dr. Hidayat, Sp.P<br>
+                    <b>Fasilitas:</b> Rawat Inap Isolasi, Poli Paru Terpadu<br>
+                    <b>Jam Operasional:</b> 24 Jam (IGD & Poli DOTS)<br>
+                    <b>No. Telepon:</b> (0341) 596881<br><br>
+                    <a href='tel:0341596881' target='_blank' style='background:#22c55e; color:white; padding:6px 12px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;'>📞 Telepon Rumah Sakit</a>
+                </div>
+            """
+        },
+        {
+            "name": "Klinik Paru Medika Malang", 
+            "lat": -7.9555, "lon": 112.6150, "color": "blue", "icon": "user-md",
+            "html": """
+                <div style="font-family: 'Segoe UI', sans-serif; width: 270px; font-size: 13px; color: #1e293b;">
+                    <b style="color: #0f172a; font-size: 14px;">🩺 Klinik Paru Medika</b><hr style="margin:5px 0; border-color:#e2e8f0;">
+                    <b>Alamat:</b> Jl. Letjen Sutoyo No.45, Malang<br>
+                    <b>Dokter Spesialis:</b> dr. Anita, Sp.P<br>
+                    <b>Fasilitas:</b> Skrining Awal & Konsultasi OAT<br>
+                    <b>Jam Operasional:</b> Senin - Sabtu (08:00 - 20:00)<br>
+                    <b>No. Telepon:</b> (0341) 471234<br><br>
+                    <a href='https://wa.me/628123456789' target='_blank' style='background:#22c55e; color:white; padding:6px 12px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;'>💬 Hubungi via WhatsApp</a>
+                </div>
+            """
+        }
     ]
 
     for h in hospitals:
-        iframe = folium.IFrame(html=h["html"], width=280, height=180)
-        popup = folium.Popup(iframe, max_width=280)
+        iframe = folium.IFrame(html=h["html"], width=290, height=210)
+        popup = folium.Popup(iframe, max_width=290)
         folium.Marker(
             location=[h["lat"], h["lon"]], popup=popup, tooltip=h["name"],
             icon=folium.Icon(color=h["color"], icon=h["icon"], prefix='fa')
