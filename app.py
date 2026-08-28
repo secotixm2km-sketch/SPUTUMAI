@@ -84,7 +84,7 @@ with st.sidebar:
         "🔬 Workspace AI (Deteksi & PDF)", 
         "🗺️ Peta Rujukan Faskes", 
         "📚 Pusat Edukasi & Kuis"
-    ])
+    ], key="selected_menu")
     st.markdown("---")
     st.info("🔒 Sistem terenkripsi untuk menjaga privasi pasien sesuai standar etika medis.")
 
@@ -243,7 +243,7 @@ elif menu == "🔬 Workspace AI (Deteksi & PDF)":
             st.session_state.scan_done = False
         st.markdown('</div>', unsafe_allow_html=True)
 
-with col_workspace:
+    with col_workspace:
         st.markdown('<div class="card"><div class="card-title">🖥️ Ruang Eksekusi AI</div>', unsafe_allow_html=True)
         if "input_image" not in st.session_state or st.session_state.input_image is None:
             st.info("Silakan unggah citra di panel tengah.")
@@ -400,6 +400,7 @@ elif menu == "🗺️ Peta Rujukan Faskes":
         ).add_to(m)
     
     st_folium(m, width="100%", height=550)
+
 # =============================================================================
 # MODUL 4: PUSAT EDUKASI & KUIS
 # =============================================================================
@@ -439,4 +440,3 @@ elif menu == "📚 Pusat Edukasi & Kuis":
                 st.balloons()
             else:
                 st.error("❌ Masih ada jawaban yang kurang tepat. Coba periksa kembali materi edukasi.")
-                
