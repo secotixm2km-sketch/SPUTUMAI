@@ -249,24 +249,31 @@ elif menu == "🔬 Workspace AI (Deteksi & PDF)":
             st.info("Silakan unggah citra di panel tengah.")
         else:
             st.image(st.session_state.input_image, use_container_width=True, caption="Citra Input Asli")
-            if st.button("🚀 Jalankan Pemindaian AI", use_container_width=True):
-                if model is None:
-                    st.error("Model `best.pt` tidak ditemukan.")
-                else:
-                    with st.spinner("AI sedang mendeteksi BTA..."):
-                        results = model.predict(source=st.session_state.input_image, conf=0.1, imgsz=640, verbose=False)[0]
-                        boxes = results.boxes
-                        count = len(boxes) if boxes is not None else 0
-                        confidences = [float(c) for c in boxes.conf.tolist()] if boxes is not None and count > 0 else []
-                        avg_conf = (sum(confidences) / len(confidences) * 100) if confidences else 0.0
-                        
-                        annotated_array = results.plot()
-                        st.session_state.result_image = Image.fromarray(annotated_array[:, :, ::-1])
-                        st.session_state.bta_count = count
-                        st.session_state.avg_confidence = avg_conf
-                        st.session_state.scan_done = True
-                        st.toast("✅ Pemindaian selesai!", icon="✅")
-        st.markdown('</div>', unsafe_allow_html=True)
+           if st.button("🚀 Jalankan Pemindaian AI", use_container_width=True):
+    if model is None:
+        st.error("Model `best.pt` tidak ditemukan.")
+    else:
+        with st.spinner("AI sedang mendeteksi BTA..."):
+            results = model.predict(source=st.session_state.input_image, conf=0.1, imgsz=640, verbose=False)[0]
+            boxes = results.boxes
+            count = len(boxes) if boxes is not None else 0
+            confidences = [float(c) for c in boxes.conf.tolist()] if boxes is not None and count > 0 else []
+            avg_conf = (sum(confidences) / len(confidences) * 100) if confidences else 0.0
+            
+            # Panggil fungsi get_diagnosis_class terlebih dahulu agar variabel css_class ada isinya
+            css_class, label, desc = get_diagnosis_class(count)
+            
+            # Perbaiki indentasi agar sejajar dengan blok else di atasnya
+            st.session_state.diagnosis_category = css_class  
+            st.session_state.patient_bta_count = count
+            
+            annotated_array = results.plot()
+            st.session_state.result_image = Image.fromarray(annotated_array[:, :, ::-1])
+            st.session_state.bta_count = count
+            st.session_state.avg_confidence = avg_conf
+            st.session_state.scan_done = True
+            st.toast("✅ Pemindaian selesai!", icon="✅")
+st.markdown('</div>', unsafe_allow_html=True)
 
     # Hasil Deteksi & Laporan
     if st.session_state.get("scan_done", False) and st.session_state.get("result_image") is not None:
@@ -287,13 +294,20 @@ elif menu == "🔬 Workspace AI (Deteksi & PDF)":
             with m2: st.metric("Rata-rata Confidence", f"{avg_conf:.1f}%")
             with m3: st.metric("Kategori Status", label.split()[0])
 
-        with tab_r:
+with tab_r:
             st.markdown(f"""
                 <div class="diagnosis-box {css_class}">
                     <h3 style="margin:0 0 5px 0;">{label}</h3>
                     <p style="margin:0;">{desc}</p>
                 </div>
             """, unsafe_allow_html=True)
+
+            # Letakkan kode Python di luar st.markdown agar berjalan sebagai fungsi Streamlit
+            if st.session_state.get("diagnosis_category") in ["scanty", "positive"]:
+                st.warning("⚠️ Hasil skrining menunjukkan indikasi TBC. Segera arahkan pasien ke fasilitas rujukan terdekat.")
+                if st.button("🗺️ Buka Peta Rujukan Berdasarkan Hasil Ini", use_container_width=True):
+                    st.session_state.selected_menu = "🗺️ Peta Rujukan Faskes"
+                    st.rerun()
 
             st.write("**Visualisasi Confidence Score:**")
             st.markdown(f"""
