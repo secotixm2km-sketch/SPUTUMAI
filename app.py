@@ -40,9 +40,28 @@ def inject_custom_css():
             display: flex; justify-content: space-between; align-items: center;
             border-left: 6px solid #0ea5e9;
         }
-        .hero-banner h1 { margin: 0; font-size: 2rem; font-weight: 800; color: #ffffff; }
-        .hero-banner p { margin: 5px 0 0 0; color: #cbd5e1; font-size: 1rem; }
-        .card { background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 20px; }
+        .hero-banner h1 { margin: 0; font-size: 2rem; font-weight: 800; color: #ffffff !important; }
+        .hero-banner p { margin: 5px 0 0 0; color: #cbd5e1 !important; font-size: 1rem; }
+        
+        .card { 
+            background: #ffffff; border-radius: 12px; padding: 20px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; 
+            margin-bottom: 20px; 
+        }
+
+        /* Perbaikan Kontras Teks & Angka Metric Streamlit */
+        [data-testid="stMetricValue"] {
+            color: #0f172a !important;
+            font-size: 1.8rem !important;
+            font-weight: 800 !important;
+        }
+        [data-testid="stMetricLabel"] {
+            color: #64748b !important;
+            font-weight: 600 !important;
+        }
+        [data-testid="stMetricDelta"] {
+            font-weight: 600 !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -83,18 +102,32 @@ if menu == "📊 Dashboard Epidemiologi":
     </div>
     """, unsafe_allow_html=True)
     
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric(label="Estimasi Kasus Nasional", value="1.060.000", delta="Tertinggi ke-2 di Dunia", delta_color="inverse")
-    m2.metric(label="Tingkat Keberhasilan Pengobatan", value="85%", delta="-5% dari Target (90%)", delta_color="inverse")
-    m3.metric(label="Kasus TBC Anak", value="134.528", delta="+12% Tahun ini", delta_color="inverse")
-    m4.metric(label="Zona Risiko Tertinggi", value="Jawa Barat & Jatim", delta="Prioritas Rujukan")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.metric(label="Estimasi Kasus Nasional", value="1.060.000", delta="Tertinggi ke-2 di Dunia", delta_color="inverse")
+        st.markdown('</div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.metric(label="Keberhasilan Pengobatan", value="85%", delta="-5% dari Target (90%)", delta_color="inverse")
+        st.markdown('</div>', unsafe_allow_html=True)
+    with col3:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.metric(label="Kasus TBC Anak", value="134.528", delta="+12% Tahun ini", delta_color="inverse")
+        st.markdown('</div>', unsafe_allow_html=True)
+    with col4:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.metric(label="Zona Risiko Tertinggi", value="Jabar & Jatim", delta="Prioritas Rujukan")
+        st.markdown('</div>', unsafe_allow_html=True)
 
+    st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("### 📈 Tren Insidensi Kasus TBC (2019 - 2023)")
     chart_data = pd.DataFrame(
         {"Tahun": ["2019", "2020", "2021", "2022", "2023"], "Jumlah Kasus Ditemukan": [568000, 393000, 397000, 717000, 809000]}
     ).set_index("Tahun")
     st.bar_chart(chart_data, color="#0ea5e9")
-
+    st.caption("Catatan: Penurunan di tahun 2020-2021 disebabkan oleh pandemi COVID-19 yang menurunkan kapasitas skrining TBC.")
+    st.markdown('</div>', unsafe_allow_html=True)
 # =============================================================================
 # MENU 2: WORKSPACE AI (DETEKSI)
 # =============================================================================
