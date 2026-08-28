@@ -318,7 +318,7 @@ elif menu == "🔬 Workspace AI (Deteksi & PDF)":
                 </div>
             """, unsafe_allow_html=True)
 
-           if st.session_state.get("diagnosis_category") in ["scanty", "positive"]:
+        if st.session_state.get("diagnosis_category") in ["scanty", "positive"]:
                 st.markdown("""
                     <div style="background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; border-left: 5px solid #ffeeba; margin-bottom: 15px;">
                         ⚠️ <b>Hasil skrining menunjukkan indikasi TBC.</b> Segera arahkan pasien ke fasilitas rujukan terdekat.
