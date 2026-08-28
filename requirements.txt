@@ -1,5 +1,5 @@
 streamlit
 ultralytics
-pillow
+Pillow
 opencv-python-headless
-fpdf
+fpdf2
