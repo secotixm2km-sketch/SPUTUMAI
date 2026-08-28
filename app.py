@@ -291,7 +291,7 @@ with col_workspace:
             with m2: st.metric("Rata-rata Confidence", f"{avg_conf:.1f}%")
             with m3: st.metric("Kategori Status", label.split()[0])
 
-with tab_r:
+        with tab_r:
             st.markdown(f"""
                 <div class="diagnosis-box {css_class}">
                     <h3 style="margin:0 0 5px 0;">{label}</h3>
@@ -299,7 +299,6 @@ with tab_r:
                 </div>
             """, unsafe_allow_html=True)
 
-            # Letakkan kode Python di luar st.markdown agar berjalan sebagai fungsi Streamlit
             if st.session_state.get("diagnosis_category") in ["scanty", "positive"]:
                 st.warning("⚠️ Hasil skrining menunjukkan indikasi TBC. Segera arahkan pasien ke fasilitas rujukan terdekat.")
                 if st.button("🗺️ Buka Peta Rujukan Berdasarkan Hasil Ini", use_container_width=True):
