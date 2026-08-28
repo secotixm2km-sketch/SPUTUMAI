@@ -323,31 +323,29 @@ elif menu == "🗺️ Peta Rujukan Faskes":
 
     st.markdown("""
     <div class="hero-banner">
-        <div><h1>Smart National Referral & <span style="color: #38bdf8;">Peta Faskes Indonesia</span></h1>
-        <p>Direktori Nasional Rumah Sakit Rujukan TBC & Dokter Spesialis Terdekat Berdasarkan Lokasi Anda.</p></div>
+        <div><h1>Smart National Referral & <span style="color: #38bdf8;">Peta Faskes Pulau Jawa</span></h1>
+        <p>Direktori Nasional Rumah Sakit Rujukan TBC & Dokter Spesialis Terdekat Berdasarkan Jarak Koordinat Anda.</p></div>
         <div style="font-size: 2.5rem;">🗺️</div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 📍 Pengaturan Lokasi Anda")
+    st.markdown("### 📍 Pengaturan Titik Koordinat Pengguna")
     col_loc1, col_loc2 = st.columns(2)
     with col_loc1:
         user_lat = st.number_input("Latitude Anda", value=-7.9666, format="%.4f")
     with col_loc2:
         user_lon = st.number_input("Longitude Anda", value=112.6326, format="%.4f")
 
-    st.info("💡 **Sistem Otomatis:** Daftar Rumah Sakit di bawah ini dibaca langsung dari file `hospitals.csv` dan diurutkan secara real-time dari **jarak terdekat hingga terjauh**.")
+    st.info("💡 **Petunjuk:** Tabel samping telah dihapus. Peta kini diperluas secara penuh ke seluruh layar. Klik marker faskes di peta untuk melihat profil lengkap rumah sakit dan dokter.")
 
-    # 1. Formula Haversine untuk menghitung jarak (KM)
     def calculate_distance(lat1, lon1, lat2, lon2):
-        R = 6371  # Radius bumi dalam kilometer
+        R = 6371
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
         a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
         c = 2 * math.asin(math.sqrt(a))
         return R * c
 
-    # 2. Membaca Database Faskes dari file hospitals.csv
     try:
         df_hosp = pd.read_csv("hospitals.csv")
         hospitals_db = df_hosp.to_dict(orient="records")
@@ -355,17 +353,14 @@ elif menu == "🗺️ Peta Rujukan Faskes":
         st.error(f"Gagal membaca file hospitals.csv: {e}")
         hospitals_db = []
 
-    # 3. Hitung jarak untuk setiap faskes
     for h in hospitals_db:
         h["distance"] = calculate_distance(user_lat, user_lon, h["lat"], h["lon"])
 
-    # 4. Urutkan berdasarkan jarak terdekat (ascending)
     sorted_hospitals = sorted(hospitals_db, key=lambda x: x["distance"])
 
-    # 5. Render Peta Berpusat di Lokasi Pasien
-    m = folium.Map(location=[user_lat, user_lon], zoom_start=11)
+    # Render Peta Full Width Berpusat di Lokasi Pengguna
+    m = folium.Map(location=[user_lat, user_lon], zoom_start=8)
 
-    # Tambahkan Marker Lokasi Pasien
     folium.Marker(
         location=[user_lat, user_lon],
         popup="<b>Lokasi Anda Saat Ini</b>",
@@ -373,44 +368,28 @@ elif menu == "🗺️ Peta Rujukan Faskes":
         icon=folium.Icon(color="green", icon="user", prefix='fa')
     ).add_to(m)
 
-    # Render Rumah Sakit ke Peta & List Samping
-    col_map, col_list = st.columns([1.5, 1])
-
-    with col_map:
-        for h in sorted_hospitals:
-            html_content = f"""
-                <div style="font-family: 'Segoe UI', sans-serif; width: 280px; font-size: 13px; color: #1e293b;">
-                    <b style="color: #0f172a; font-size: 14px;">🏥 {h['name']}</b><hr style="margin:5px 0;">
-                    <b>Kota:</b> {h['city']}<br>
-                    <b>Jarak:</b> ~{h['distance']:.2f} km dari Anda<br>
-                    <b>Alamat:</b> {h['address']}<br>
-                    <b>Spesialis:</b> {h['doctor']}<br>
-                    <b>Layanan:</b> {h['facilities']}<br>
-                    <b>Telepon:</b> {h['phone']}<br><br>
-                    <a href='tel:{h['phone']}' target='_blank' style='background:#22c55e; color:white; padding:6px 12px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;'>📞 Hubungi Rumah Sakit</a>
-                </div>
-            """
-            iframe = folium.IFrame(html=html_content, width=290, height=215)
-            popup = folium.Popup(iframe, max_width=290)
-            
-            folium.Marker(
-                location=[h["lat"], h["lon"]], popup=popup, tooltip=f"{h['name']} ({h['distance']:.1f} km)",
-                icon=folium.Icon(color=h["color"], icon=h["icon"], prefix='fa')
-            ).add_to(m)
+    for h in sorted_hospitals:
+        html_content = f"""
+            <div style="font-family: 'Segoe UI', sans-serif; width: 280px; font-size: 13px; color: #1e293b;">
+                <b style="color: #0f172a; font-size: 14px;">🏥 {h['name']}</b><hr style="margin:5px 0;">
+                <b>Kota:</b> {h['city']}<br>
+                <b>Jarak:</b> ~{h['distance']:.2f} km dari Anda<br>
+                <b>Alamat:</b> {h['address']}<br>
+                <b>Spesialis:</b> {h['doctor']}<br>
+                <b>Layanan:</b> {h['facilities']}<br>
+                <b>Telepon:</b> {h['phone']}<br><br>
+                <a href='tel:{h['phone']}' target='_blank' style='background:#22c55e; color:white; padding:6px 12px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;'>📞 Hubungi Rumah Sakit</a>
+            </div>
+        """
+        iframe = folium.IFrame(html=html_content, width=290, height=215)
+        popup = folium.Popup(iframe, max_width=290)
         
-        st_folium(m, width="100%", height=450)
-
-    with col_list:
-        st.markdown("#### 📋 Urutan Faskes Terdekat")
-        for i, h in enumerate(sorted_hospitals, 1):
-            st.markdown(f"""
-                <div class="card" style="padding: 12px; margin-bottom: 10px;">
-                    <b style="color: #0ea5e9;">#{i} {h['name']}</b><br>
-                    <span style="font-size: 12px; color: #64748b;">📍 {h['city']} — <b>~{h['distance']:.2f} km</b></span><br>
-                    <span style="font-size: 12px;">👨‍⚕️ {h['doctor']}</span><br>
-                    <a href="tel:{h['phone']}" style="font-size: 12px; text-decoration:none;">📞 {h['phone']}</a>
-                </div>
-            """, unsafe_allow_html=True)
+        folium.Marker(
+            location=[h["lat"], h["lon"]], popup=popup, tooltip=f"{h['name']} ({h['distance']:.1f} km)",
+            icon=folium.Icon(color=h["color"], icon=h["icon"], prefix='fa')
+        ).add_to(m)
+    
+    st_folium(m, width="100%", height=550)
 # =============================================================================
 # MODUL 4: PUSAT EDUKASI & KUIS
 # =============================================================================
