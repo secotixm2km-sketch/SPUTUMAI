@@ -3,3 +3,5 @@ ultralytics
 Pillow
 opencv-python-headless
 fpdf2
+folium
+streamlit-folium
