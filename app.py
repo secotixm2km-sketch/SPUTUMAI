@@ -329,7 +329,6 @@ elif menu == "🗺️ Peta Rujukan Faskes":
     </div>
     """, unsafe_allow_html=True)
 
-    # Simulasi Titik Koordinat Pasien (Default: Malang Pusat, bisa diintegrasikan GPS Browser)
     st.markdown("### 📍 Pengaturan Lokasi Anda")
     col_loc1, col_loc2 = st.columns(2)
     with col_loc1:
@@ -337,7 +336,7 @@ elif menu == "🗺️ Peta Rujukan Faskes":
     with col_loc2:
         user_lon = st.number_input("Longitude Anda", value=112.6326, format="%.4f")
 
-    st.info("💡 **Sistem Otomatis:** Daftar Rumah Sakit di bawah ini diurutkan secara real-time mulai dari **jarak terdekat hingga terjauh** dari posisi koordinat Anda.")
+    st.info("💡 **Sistem Otomatis:** Daftar Rumah Sakit di bawah ini dibaca langsung dari file `hospitals.csv` dan diurutkan secara real-time dari **jarak terdekat hingga terjauh**.")
 
     # 1. Formula Haversine untuk menghitung jarak (KM)
     def calculate_distance(lat1, lon1, lat2, lon2):
@@ -348,36 +347,15 @@ elif menu == "🗺️ Peta Rujukan Faskes":
         c = 2 * math.asin(math.sqrt(a))
         return R * c
 
-    # 2. Database Nasional Rumah Sakit & Dokter (Sampel Lintas Kota di Indonesia)
-    hospitals_db = [
-        {
-            "name": "RSUD Dr. Saiful Anwar (RSSA)", "city": "Malang", "lat": -7.9723, "lon": 112.6300, "color": "red", "icon": "hospital-o",
-            "doctor": "dr. Susilo, Sp.P(K)", "phone": "0341362101", "facilities": "TBC RO, GeneXpert, Poli DOTS",
-            "address": "Jl. Jaksa Agung Suprapto No.2, Malang"
-        },
-        {
-            "name": "RS Paru dr. Ario Wirawan", "city": "Salatiga", "lat": -7.3311, "lon": 110.5083, "color": "red", "icon": "hospital-o",
-            "doctor": "dr. Hendra, Sp.P", "phone": "0298326088", "facilities": "Pusat Rujukan Paru Nasional, Isolasi",
-            "address": "Jl. Hasanuddin No.80, Salatiga"
-        },
-        {
-            "name": "RSUP Persahabatan", "city": "Jakarta Timur", "lat": -6.1954, "lon": 106.8923, "color": "red", "icon": "hospital-o",
-            "doctor": "Prof. Dr. dr. Faisal Yunus, Sp.P(K)", "phone": "0214891708", "facilities": "Pusat Respirasi Nasional, Lab Biosafety",
-            "address": "Jl. Persahabatan Raya, Jakarta Timur"
-        },
-        {
-            "name": "RSUD Dr. Soetomo", "city": "Surabaya", "lat": -7.2658, "lon": 112.7554, "color": "red", "icon": "hospital-o",
-            "doctor": "dr. Retno Asih, Sp.P", "phone": "0315501011", "facilities": "TBC RO Tingkat Lanjut, GeneXpert",
-            "address": "Jl. Mayjen Prof. Dr. Moestopo No.6-8, Surabaya"
-        },
-        {
-            "name": "Klinik Paru Medika", "city": "Malang", "lat": -7.9555, "lon": 112.6150, "color": "blue", "icon": "user-md",
-            "doctor": "dr. Anita, Sp.P", "phone": "0341471234", "facilities": "Skrining Awal & Konsultasi",
-            "address": "Jl. Letjen Sutoyo No.45, Malang"
-        }
-    ]
+    # 2. Membaca Database Faskes dari file hospitals.csv
+    try:
+        df_hosp = pd.read_csv("hospitals.csv")
+        hospitals_db = df_hosp.to_dict(orient="records")
+    except Exception as e:
+        st.error(f"Gagal membaca file hospitals.csv: {e}")
+        hospitals_db = []
 
-    # 3. Hitung jarak untuk setiap faskes dan masukkan ke atribut data
+    # 3. Hitung jarak untuk setiap faskes
     for h in hospitals_db:
         h["distance"] = calculate_distance(user_lat, user_lon, h["lat"], h["lon"])
 
@@ -395,7 +373,7 @@ elif menu == "🗺️ Peta Rujukan Faskes":
         icon=folium.Icon(color="green", icon="user", prefix='fa')
     ).add_to(m)
 
-    # Render Rumah Sakit ke Peta & List
+    # Render Rumah Sakit ke Peta & List Samping
     col_map, col_list = st.columns([1.5, 1])
 
     with col_map:
