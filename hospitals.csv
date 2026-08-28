@@ -1,1 +1,6 @@
-
+name,city,lat,lon,color,icon,doctor,phone,facilities,address
+RSUD Dr. Saiful Anwar,Malang,-7.9723,112.6300,red,hospital-o,dr. Susilo Sp.P(K),0341362101,TBC RO & GeneXpert,Jl. Jaksa Agung Suprapto No.2
+RS Paru dr. Ario Wirawan,Salatiga,-7.3311,110.5083,red,hospital-o,dr. Hendra Sp.P,0298326088,Pusat Rujukan Paru Nasional,Jl. Hasanuddin No.80
+RSUP Persahabatan,Jakarta Timur,-6.1954,106.8923,red,hospital-o,Prof. Dr. dr. Faisal Yunus Sp.P(K),0214891708,Pusat Respirasi Nasional,Jl. Persahabatan Raya
+RSUD Dr. Soetomo,Surabaya,-7.2658,112.7554,red,hospital-o,dr. Retno Asih Sp.P,0315501011,TBC RO Tingkat Lanjut,Jl. Mayjen Prof. Dr. Moestopo No.6-8
+Klinik Paru Medika,Malang,-7.9555,112.6150,blue,user-md,dr. Anita Sp.P,0341471234,Skrining Awal & Konsultasi,Jl. Letjen Sutoyo No.45
