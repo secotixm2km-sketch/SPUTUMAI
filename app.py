@@ -319,77 +319,120 @@ elif menu == "🔬 Workspace AI (Deteksi & PDF)":
 # MODUL 3: PETA RUJUKAN FASKES
 # =============================================================================
 elif menu == "🗺️ Peta Rujukan Faskes":
+    import math
+
     st.markdown("""
     <div class="hero-banner">
-        <div><h1>Smart Referral & <span style="color: #38bdf8;">Peta Faskes</span></h1>
-        <p>Direktori Interaktif Rumah Sakit Rujukan dan Dokter Spesialis Paru Terdekat (Area Malang Raya).</p></div>
+        <div><h1>Smart National Referral & <span style="color: #38bdf8;">Peta Faskes Indonesia</span></h1>
+        <p>Direktori Nasional Rumah Sakit Rujukan TBC & Dokter Spesialis Terdekat Berdasarkan Lokasi Anda.</p></div>
         <div style="font-size: 2.5rem;">🗺️</div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.info("💡 **Petunjuk:** Klik ikon marker pada peta di bawah ini untuk melihat profil lengkap, alamat, jadwal dokter spesialis, serta kontak darurat faskes.")
-    
-    m = folium.Map(location=[-7.9666, 112.6326], zoom_start=13)
-    
-    # Data Rumah Sakit & Dokter dengan Biodata Lengkap
-    hospitals = [
+    # Simulasi Titik Koordinat Pasien (Default: Malang Pusat, bisa diintegrasikan GPS Browser)
+    st.markdown("### 📍 Pengaturan Lokasi Anda")
+    col_loc1, col_loc2 = st.columns(2)
+    with col_loc1:
+        user_lat = st.number_input("Latitude Anda", value=-7.9666, format="%.4f")
+    with col_loc2:
+        user_lon = st.number_input("Longitude Anda", value=112.6326, format="%.4f")
+
+    st.info("💡 **Sistem Otomatis:** Daftar Rumah Sakit di bawah ini diurutkan secara real-time mulai dari **jarak terdekat hingga terjauh** dari posisi koordinat Anda.")
+
+    # 1. Formula Haversine untuk menghitung jarak (KM)
+    def calculate_distance(lat1, lon1, lat2, lon2):
+        R = 6371  # Radius bumi dalam kilometer
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+        a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+        c = 2 * math.asin(math.sqrt(a))
+        return R * c
+
+    # 2. Database Nasional Rumah Sakit & Dokter (Sampel Lintas Kota di Indonesia)
+    hospitals_db = [
         {
-            "name": "RSUD Dr. Saiful Anwar (RSSA) Malang", 
-            "lat": -7.9723, "lon": 112.6300, "color": "red", "icon": "hospital-o",
-            "html": """
-                <div style="font-family: 'Segoe UI', sans-serif; width: 270px; font-size: 13px; color: #1e293b;">
-                    <b style="color: #0f172a; font-size: 14px;">🏥 RSUD Dr. Saiful Anwar (RSSA)</b><hr style="margin:5px 0; border-color:#e2e8f0;">
-                    <b>Alamat:</b> Jl. Jaksa Agung Suprapto No.2, Malang<br>
-                    <b>Dokter Spesialis:</b> dr. Susilo, Sp.P(K) (Konsultan Paru)<br>
-                    <b>Fasilitas:</b> Poli DOTS, TBC RO, GeneXpert<br>
-                    <b>Jam Operasional:</b> Senin - Sabtu (08:00 - 14:00)<br>
-                    <b>No. Telepon:</b> (0341) 362101<br><br>
-                    <a href='tel:0341362101' target='_blank' style='background:#22c55e; color:white; padding:6px 12px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;'>📞 Telepon Rumah Sakit</a>
-                </div>
-            """
+            "name": "RSUD Dr. Saiful Anwar (RSSA)", "city": "Malang", "lat": -7.9723, "lon": 112.6300, "color": "red", "icon": "hospital-o",
+            "doctor": "dr. Susilo, Sp.P(K)", "phone": "0341362101", "facilities": "TBC RO, GeneXpert, Poli DOTS",
+            "address": "Jl. Jaksa Agung Suprapto No.2, Malang"
         },
         {
-            "name": "Rumah Sakit Paru Batu", 
-            "lat": -7.8715, "lon": 112.5269, "color": "red", "icon": "h-square",
-            "html": """
-                <div style="font-family: 'Segoe UI', sans-serif; width: 270px; font-size: 13px; color: #1e293b;">
-                    <b style="color: #0f172a; font-size: 14px;">🏥 Rumah Sakit Paru Batu</b><hr style="margin:5px 0; border-color:#e2e8f0;">
-                    <b>Alamat:</b> Jl. A. Yani No.149, Batu<br>
-                    <b>Dokter Spesialis:</b> dr. Hidayat, Sp.P<br>
-                    <b>Fasilitas:</b> Rawat Inap Isolasi, Poli Paru Terpadu<br>
-                    <b>Jam Operasional:</b> 24 Jam (IGD & Poli DOTS)<br>
-                    <b>No. Telepon:</b> (0341) 596881<br><br>
-                    <a href='tel:0341596881' target='_blank' style='background:#22c55e; color:white; padding:6px 12px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;'>📞 Telepon Rumah Sakit</a>
-                </div>
-            """
+            "name": "RS Paru dr. Ario Wirawan", "city": "Salatiga", "lat": -7.3311, "lon": 110.5083, "color": "red", "icon": "hospital-o",
+            "doctor": "dr. Hendra, Sp.P", "phone": "0298326088", "facilities": "Pusat Rujukan Paru Nasional, Isolasi",
+            "address": "Jl. Hasanuddin No.80, Salatiga"
         },
         {
-            "name": "Klinik Paru Medika Malang", 
-            "lat": -7.9555, "lon": 112.6150, "color": "blue", "icon": "user-md",
-            "html": """
-                <div style="font-family: 'Segoe UI', sans-serif; width: 270px; font-size: 13px; color: #1e293b;">
-                    <b style="color: #0f172a; font-size: 14px;">🩺 Klinik Paru Medika</b><hr style="margin:5px 0; border-color:#e2e8f0;">
-                    <b>Alamat:</b> Jl. Letjen Sutoyo No.45, Malang<br>
-                    <b>Dokter Spesialis:</b> dr. Anita, Sp.P<br>
-                    <b>Fasilitas:</b> Skrining Awal & Konsultasi OAT<br>
-                    <b>Jam Operasional:</b> Senin - Sabtu (08:00 - 20:00)<br>
-                    <b>No. Telepon:</b> (0341) 471234<br><br>
-                    <a href='https://wa.me/628123456789' target='_blank' style='background:#22c55e; color:white; padding:6px 12px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;'>💬 Hubungi via WhatsApp</a>
-                </div>
-            """
+            "name": "RSUP Persahabatan", "city": "Jakarta Timur", "lat": -6.1954, "lon": 106.8923, "color": "red", "icon": "hospital-o",
+            "doctor": "Prof. Dr. dr. Faisal Yunus, Sp.P(K)", "phone": "0214891708", "facilities": "Pusat Respirasi Nasional, Lab Biosafety",
+            "address": "Jl. Persahabatan Raya, Jakarta Timur"
+        },
+        {
+            "name": "RSUD Dr. Soetomo", "city": "Surabaya", "lat": -7.2658, "lon": 112.7554, "color": "red", "icon": "hospital-o",
+            "doctor": "dr. Retno Asih, Sp.P", "phone": "0315501011", "facilities": "TBC RO Tingkat Lanjut, GeneXpert",
+            "address": "Jl. Mayjen Prof. Dr. Moestopo No.6-8, Surabaya"
+        },
+        {
+            "name": "Klinik Paru Medika", "city": "Malang", "lat": -7.9555, "lon": 112.6150, "color": "blue", "icon": "user-md",
+            "doctor": "dr. Anita, Sp.P", "phone": "0341471234", "facilities": "Skrining Awal & Konsultasi",
+            "address": "Jl. Letjen Sutoyo No.45, Malang"
         }
     ]
 
-    for h in hospitals:
-        iframe = folium.IFrame(html=h["html"], width=290, height=210)
-        popup = folium.Popup(iframe, max_width=290)
-        folium.Marker(
-            location=[h["lat"], h["lon"]], popup=popup, tooltip=h["name"],
-            icon=folium.Icon(color=h["color"], icon=h["icon"], prefix='fa')
-        ).add_to(m)
+    # 3. Hitung jarak untuk setiap faskes dan masukkan ke atribut data
+    for h in hospitals_db:
+        h["distance"] = calculate_distance(user_lat, user_lon, h["lat"], h["lon"])
 
-    st_folium(m, width=1000, height=500)
+    # 4. Urutkan berdasarkan jarak terdekat (ascending)
+    sorted_hospitals = sorted(hospitals_db, key=lambda x: x["distance"])
 
+    # 5. Render Peta Berpusat di Lokasi Pasien
+    m = folium.Map(location=[user_lat, user_lon], zoom_start=11)
+
+    # Tambahkan Marker Lokasi Pasien
+    folium.Marker(
+        location=[user_lat, user_lon],
+        popup="<b>Lokasi Anda Saat Ini</b>",
+        tooltip="Titik Koordinat Anda",
+        icon=folium.Icon(color="green", icon="user", prefix='fa')
+    ).add_to(m)
+
+    # Render Rumah Sakit ke Peta & List
+    col_map, col_list = st.columns([1.5, 1])
+
+    with col_map:
+        for h in sorted_hospitals:
+            html_content = f"""
+                <div style="font-family: 'Segoe UI', sans-serif; width: 280px; font-size: 13px; color: #1e293b;">
+                    <b style="color: #0f172a; font-size: 14px;">🏥 {h['name']}</b><hr style="margin:5px 0;">
+                    <b>Kota:</b> {h['city']}<br>
+                    <b>Jarak:</b> ~{h['distance']:.2f} km dari Anda<br>
+                    <b>Alamat:</b> {h['address']}<br>
+                    <b>Spesialis:</b> {h['doctor']}<br>
+                    <b>Layanan:</b> {h['facilities']}<br>
+                    <b>Telepon:</b> {h['phone']}<br><br>
+                    <a href='tel:{h['phone']}' target='_blank' style='background:#22c55e; color:white; padding:6px 12px; border-radius:6px; text-decoration:none; font-weight:600; display:inline-block;'>📞 Hubungi Rumah Sakit</a>
+                </div>
+            """
+            iframe = folium.IFrame(html=html_content, width=290, height=215)
+            popup = folium.Popup(iframe, max_width=290)
+            
+            folium.Marker(
+                location=[h["lat"], h["lon"]], popup=popup, tooltip=f"{h['name']} ({h['distance']:.1f} km)",
+                icon=folium.Icon(color=h["color"], icon=h["icon"], prefix='fa')
+            ).add_to(m)
+        
+        st_folium(m, width="100%", height=450)
+
+    with col_list:
+        st.markdown("#### 📋 Urutan Faskes Terdekat")
+        for i, h in enumerate(sorted_hospitals, 1):
+            st.markdown(f"""
+                <div class="card" style="padding: 12px; margin-bottom: 10px;">
+                    <b style="color: #0ea5e9;">#{i} {h['name']}</b><br>
+                    <span style="font-size: 12px; color: #64748b;">📍 {h['city']} — <b>~{h['distance']:.2f} km</b></span><br>
+                    <span style="font-size: 12px;">👨‍⚕️ {h['doctor']}</span><br>
+                    <a href="tel:{h['phone']}" style="font-size: 12px; text-decoration:none;">📞 {h['phone']}</a>
+                </div>
+            """, unsafe_allow_html=True)
 # =============================================================================
 # MODUL 4: PUSAT EDUKASI & KUIS
 # =============================================================================
