@@ -1,6 +1,13 @@
 name,city,lat,lon,color,icon,doctor,phone,facilities,address
+RSUP Persahabatan,Jakarta Timur,-6.1954,106.8923,red,hospital-o,Prof. Dr. dr. Faisal Yunus Sp.P(K),0214891708,Pusat Respirasi Nasional & Lab Biosafety,Jl. Persahabatan Raya
+RSUD Dr. Soetomo,Surabaya,-7.2658,112.7554,red,hospital-o,dr. Retno Asih Sp.P,0315501011,TBC RO Tingkat Lanjut & GeneXpert,Jl. Mayjen Prof. Dr. Moestopo No.6-8
 RSUD Dr. Saiful Anwar,Malang,-7.9723,112.6300,red,hospital-o,dr. Susilo Sp.P(K),0341362101,TBC RO & GeneXpert,Jl. Jaksa Agung Suprapto No.2
-RS Paru dr. Ario Wirawan,Salatiga,-7.3311,110.5083,red,hospital-o,dr. Hendra Sp.P,0298326088,Pusat Rujukan Paru Nasional,Jl. Hasanuddin No.80
-RSUP Persahabatan,Jakarta Timur,-6.1954,106.8923,red,hospital-o,Prof. Dr. dr. Faisal Yunus Sp.P(K),0214891708,Pusat Respirasi Nasional,Jl. Persahabatan Raya
-RSUD Dr. Soetomo,Surabaya,-7.2658,112.7554,red,hospital-o,dr. Retno Asih Sp.P,0315501011,TBC RO Tingkat Lanjut,Jl. Mayjen Prof. Dr. Moestopo No.6-8
+RS Paru dr. Ario Wirawan,Salatiga,-7.3311,110.5083,red,hospital-o,dr. Hendra Sp.P,0298326088,Pusat Rujukan Paru Nasional & Isolasi,Jl. Hasanuddin No.80
+RSUP Dr. Hasan Sadikin,Bandung,-6.8986,107.6033,red,hospital-o,dr. Aris Sugiharto Sp.P(K),0222034953,Pusat Rujukan Jabar & GeneXpert,Jl. Pasteur No.38
+RSUP Dr. Sardjito,Yogyakarta,-7.7667,110.3725,red,hospital-o,dr. Totok Utoro Sp.P,0274587333,Poli DOTS & Rawat Inap Paru,Jl. Kesehatan No.1
+RSUD Dr. Moewardi,Surakarta,-7.5623,110.8228,red,hospital-o,dr. Joko Praptono Sp.P,0271634634,Layanan TBC RO & Konsultasi,Jl. Kolonel Sutarto No.132
+RSUD Dr. Kariadi,Semarang,-6.9932,110.4075,red,hospital-o,dr. Santoso Sp.P,0248413993,Poli Spesialis Paru Utama,Jl. Dr. Sutomo No.16
+RS Paru Dr. M. Goenawan Partowidigdo,Bogor,-6.6908,106.8522,red,hospital-o,dr. Hidayat Sp.P,02518240752,Isolasi Khusus Paru & DOTS,Cisarua, Bogor
+RSUD Kabupaten Tangerang,Tangerang,-6.1783,106.6319,red,hospital-o,dr. Maya Puspita Sp.P,0215523507,Skrining & Pengobatan Lini 1,Jl. Ahmad Yani No.9
 Klinik Paru Medika,Malang,-7.9555,112.6150,blue,user-md,dr. Anita Sp.P,0341471234,Skrining Awal & Konsultasi,Jl. Letjen Sutoyo No.45
+Klinik Utama Paru Sehat,Bandung,-6.9175,107.6191,blue,user-md,dr. Budi Santoso Sp.P,0224231122,Konsultasi & Pemeriksaan Dahak,Jl. Asia Afrika No.10
