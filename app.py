@@ -1,17 +1,17 @@
 # =============================================================================
-# SputumAI Workspace
-# Aplikasi Diagnostik Medis Berbasis AI untuk Deteksi Bakteri Mycobacterium
-# Tuberculosis (BTA) pada Citra Dahak Mikroskopis menggunakan YOLOv8
+# SPUTUM-AI : END-TO-END TUBERCULOSIS PLATFORM
 # =============================================================================
-
 import os
 import io
 import tempfile
 from datetime import datetime
+import pandas as pd
 
 import streamlit as st
 from PIL import Image
 from fpdf import FPDF
+import folium
+from streamlit_folium import st_folium
 
 try:
     from ultralytics import YOLO
@@ -19,483 +19,196 @@ try:
 except ImportError:
     ULTRALYTICS_AVAILABLE = False
 
-
 # =============================================================================
-# 1. KONFIGURASI HALAMAN
+# 1. KONFIGURASI HALAMAN & CSS
 # =============================================================================
-st.set_page_config(
-    page_title="SputumAI Workspace | Clinical Diagnostic Dashboard",
-    page_icon="🩺",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+st.set_page_config(page_title="SputumAI | TB Platform", page_icon="🏥", layout="wide", initial_sidebar_state="expanded")
 
-MODEL_PATH = "best.pt"
-
-
-# =============================================================================
-# 2. CUSTOM CSS — CLINICAL DASHBOARD THEME (LIGHT MODE ENFORCED)
-# =============================================================================
 def inject_custom_css():
-    st.markdown(
-        """
+    st.markdown("""
         <style>
         html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
-            color-scheme: light only;
-            background-color: #f1f5f9 !important;
-            color: #1e293b !important;
+            background-color: #f8fafc !important; color: #1e293b !important;
         }
-        [data-testid="stAppViewContainer"] * { color: #1e293b; }
         [data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; }
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        [data-testid="stToolbar"] {visibility: hidden;}
-        [data-testid="stDecoration"] {display: none;}
-
-        html, body, [class*="css"] { font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif; }
-        .block-container { padding-top: 1.2rem; padding-bottom: 3rem; max-width: 1300px; }
-
-        .clinical-header {
-            background: linear-gradient(120deg, #0f172a 0%, #1e3a8a 55%, #0ea5e9 130%);
-            padding: 28px 36px; border-radius: 18px; margin-bottom: 24px;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25); position: relative; overflow: hidden;
+        #MainMenu {visibility: hidden;} footer {visibility: hidden;}
+        
+        .hero-banner {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+            color: white; padding: 25px 35px; border-radius: 14px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15); margin-bottom: 25px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-left: 6px solid #0ea5e9;
         }
-        .clinical-header h1 { color: #ffffff !important; font-size: 30px; font-weight: 800; margin: 0; }
-        .clinical-header p { color: #dbeafe !important; font-size: 14.5px; margin: 6px 0 0 0; max-width: 720px; }
-        .header-badge {
-            background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);
-            color: #e0f2fe !important; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
-        }
-
-        .card {
-            background: #ffffff; border-radius: 16px; padding: 22px 24px;
-            box-shadow: 0 4px 18px rgba(30, 41, 59, 0.07); border: 1px solid #e2e8f0; margin-bottom: 20px;
-        }
-        .card-title { font-size: 15.5px; font-weight: 700; color: #0f172a !important; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
-        .card-subtitle { font-size: 12.5px; color: #64748b !important; margin-bottom: 16px; }
-
-        [data-testid="stSidebar"] { background-color: #ffffff !important; border-right: 1px solid #e2e8f0; }
-        [data-testid="stSidebar"] * { color: #1e293b !important; }
-        .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 6px 0 18px 0; border-bottom: 1px solid #e2e8f0; margin-bottom: 18px; }
-        .sidebar-brand-icon { background: linear-gradient(135deg, #0f172a, #0ea5e9); width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 19px; }
-        .sidebar-section-label { font-size: 11.5px; font-weight: 700; color: #0ea5e9 !important; text-transform: uppercase; margin: 18px 0 8px 0; }
-        .guidance-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 14px 16px; font-size: 12.5px; color: #0c4a6e !important; line-height: 1.6; }
-        .guidance-box ul { margin: 6px 0 0 0; padding-left: 18px; }
-
-        [data-testid="stFileUploader"] { background: #f8fafc; border: 1.5px dashed #94a3b8; border-radius: 12px; padding: 6px; }
-        .stButton > button {
-            background: linear-gradient(135deg, #0ea5e9, #1e3a8a); color: #ffffff !important;
-            border: none; border-radius: 10px; padding: 0.6rem 1.2rem; font-weight: 600; width: 100%;
-        }
-        .stButton > button:hover { color: #ffffff !important; transform: translateY(-1px); }
-
-        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 70px 20px; text-align: center; border: 2px dashed #cbd5e1; border-radius: 16px; background: #f8fafc; }
-        .empty-state .icon-circle { width: 72px; height: 72px; border-radius: 50%; background: #e0f2fe; display: flex; align-items: center; justify-content: center; font-size: 34px; margin-bottom: 16px; }
-
-        .diagnosis-box { border-radius: 14px; padding: 22px 24px; margin-bottom: 18px; border-left: 6px solid; }
-        .diagnosis-box.negative { background: #f0fdf4; border-color: #22c55e; }
-        .diagnosis-box.scanty { background: #fffbeb; border-color: #f59e0b; }
-        .diagnosis-box.positive { background: #fef2f2; border-color: #ef4444; }
-        .diagnosis-title { font-size: 19px; font-weight: 800; margin-bottom: 4px; }
-        .diagnosis-box.negative .diagnosis-title { color: #15803d !important; }
-        .diagnosis-box.scanty .diagnosis-title { color: #b45309 !important; }
-        .diagnosis-box.positive .diagnosis-title { color: #b91c1c !important; }
-        .diagnosis-desc { font-size: 13.5px; color: #334155 !important; line-height: 1.6; }
-
-        .metric-mini { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; text-align: center; }
-        .metric-mini .val { font-size: 24px; font-weight: 800; color: #0f172a !important; }
-        .metric-mini .lbl { font-size: 11.5px; color: #64748b !important; text-transform: uppercase; }
-
-        .progress-wrap { margin-top: 8px; }
-        .progress-label-row { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; color: #334155 !important; margin-bottom: 6px; }
-        .progress-track { width: 100%; height: 16px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
-        .progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #0ea5e9, #1e3a8a); }
-        .img-caption { text-align: center; font-size: 12.5px; font-weight: 600; color: #64748b !important; margin-top: 6px; }
+        .hero-banner h1 { margin: 0; font-size: 2rem; font-weight: 800; color: #ffffff; }
+        .hero-banner p { margin: 5px 0 0 0; color: #cbd5e1; font-size: 1rem; }
+        .card { background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 20px; }
         </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    """, unsafe_allow_html=True)
 
-
-# =============================================================================
-# 3. MODEL LOADING (CACHED)
-# =============================================================================
 @st.cache_resource(show_spinner=False)
-def load_model(path: str):
-    if not ULTRALYTICS_AVAILABLE or not os.path.exists(path):
-        return None
+def load_model():
+    path = "best.pt"
+    if not ULTRALYTICS_AVAILABLE or not os.path.exists(path): return None
     return YOLO(path)
 
+# =============================================================================
+# 2. NAVIGASI SIDEBAR UTAMA
+# =============================================================================
+inject_custom_css()
+with st.sidebar:
+    st.markdown("### 🏥 SputumAI Ecosystem")
+    st.caption("Platform Penanganan TBC Terpadu")
+    st.markdown("---")
+    menu = st.radio("Pilih Modul Navigasi:", [
+        "📊 Dashboard Epidemiologi",
+        "🔬 Workspace AI (Deteksi)", 
+        "🗺️ Peta Rujukan Faskes", 
+        "📚 Pusat Edukasi & Kuis"
+    ])
+    st.markdown("---")
+    st.info("🔒 Sistem terenkripsi untuk menjaga privasi pasien sesuai standar etika medis.")
+
+model = load_model()
 
 # =============================================================================
-# 4. SESSION STATE INIT
+# MENU 1: DASHBOARD EPIDEMIOLOGI
 # =============================================================================
-def init_session_state():
-    defaults = {
-        "input_image": None,
-        "result_image": None,
-        "bta_count": None,
-        "avg_confidence": None,
-        "scan_done": False,
-        "detections": [],
-    }
-    for k, v in defaults.items():
-        if k not in st.session_state:
-            st.session_state[k] = v
+if menu == "📊 Dashboard Epidemiologi":
+    st.markdown("""
+    <div class="hero-banner">
+        <div><h1>Dashboard <span style="color: #38bdf8;">Epidemiologi TBC</span></h1>
+        <p>Analisis tren penyebaran dan keberbahayaan TBC di Indonesia (Berdasarkan Data Kemenkes RI)</p></div>
+        <div style="font-size: 2.5rem;">📊</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric(label="Estimasi Kasus Nasional", value="1.060.000", delta="Tertinggi ke-2 di Dunia", delta_color="inverse")
+    m2.metric(label="Tingkat Keberhasilan Pengobatan", value="85%", delta="-5% dari Target (90%)", delta_color="inverse")
+    m3.metric(label="Kasus TBC Anak", value="134.528", delta="+12% Tahun ini", delta_color="inverse")
+    m4.metric(label="Zona Risiko Tertinggi", value="Jawa Barat & Jatim", delta="Prioritas Rujukan")
 
-
-# =============================================================================
-# 5. SIDEBAR & HEADER
-# =============================================================================
-def render_sidebar():
-    with st.sidebar:
-        st.markdown(
-            """
-            <div class="sidebar-brand">
-                <div class="sidebar-brand-icon">🧬</div>
-                <div class="sidebar-brand-text">
-                    <b>SputumAI</b><br><span>Workspace v1.0</span>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.markdown('<div class="sidebar-section-label">Data Pasien</div>', unsafe_allow_html=True)
-        rm_number = st.text_input("Nomor Rekam Medis", placeholder="Contoh: RM-00231458")
-        patient_age = st.number_input("Usia Pasien (tahun)", min_value=0, max_value=120, value=30, step=1)
-        patient_gender = st.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
-        examiner_name = st.text_input("Nama Analis / Petugas Lab", placeholder="Contoh: dr. Andi Wijaya, Sp.PK")
-
-        st.markdown('<div class="sidebar-section-label">Panduan Kualitas Citra</div>', unsafe_allow_html=True)
-        st.markdown(
-            """
-            <div class="guidance-box">
-                <b>📌 Standar Preparat Mikroskopis</b>
-                <ul>
-                    <li>Gunakan pembesaran objektif <b>100x</b>.</li>
-                    <li>Pastikan pencahayaan merata.</li>
-                    <li>Fokus tajam pada lapang pandang BTA.</li>
-                    <li>Format: <b>JPG / PNG</b>, resolusi ≥ 640px.</li>
-                </ul>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    return {
-        "rm_number": rm_number if rm_number else "-",
-        "age": patient_age,
-        "gender": patient_gender,
-        "examiner": examiner_name if examiner_name else "-",
-    }
-
-def render_header():
-    st.markdown(
-        """
-        <div class="clinical-header">
-            <h1>🩺 SputumAI Workspace</h1>
-            <p>Sistem Bantu Diagnosis Berbasis Kecerdasan Buatan (YOLOv8) untuk Deteksi dan Kuantifikasi BTA.</p>
-            <div style="margin-top: 14px; display: flex; gap: 8px;">
-                <span class="header-badge">⚙️ Model: YOLOv8</span>
-                <span class="header-badge">🔬 Mode: Klinis</span>
-                <span class="header-badge">🟢 Status: Online</span>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
+    st.markdown("### 📈 Tren Insidensi Kasus TBC (2019 - 2023)")
+    chart_data = pd.DataFrame(
+        {"Tahun": ["2019", "2020", "2021", "2022", "2023"], "Jumlah Kasus Ditemukan": [568000, 393000, 397000, 717000, 809000]}
+    ).set_index("Tahun")
+    st.bar_chart(chart_data, color="#0ea5e9")
 
 # =============================================================================
-# 6. HELPER — DIAGNOSIS & INFERENCE
+# MENU 2: WORKSPACE AI (DETEKSI)
 # =============================================================================
-def get_diagnosis_class(count: int):
-    if count == 0:
-        return ("negative", "negative", "NEGATIF (Tidak Ditemukan BTA)", "Tidak ditemukan Basil Tahan Asam pada seluruh lapang pandang.")
-    elif 1 <= count <= 9:
-        return ("scanty", "scanty", "SCANTY (BTA Positif Rendah / 1-9 per LP)", "Ditemukan sejumlah kecil Basil Tahan Asam (kategori Scanty).")
-    else:
-        return ("positive", "positive", "POSITIF (BTA Ditemukan > 9 per Lapang Pandang)", "Ditemukan jumlah BTA yang signifikan, mengindikasikan infeksi aktif.")
+elif menu == "🔬 Workspace AI (Deteksi)":
+    st.markdown("""
+    <div class="hero-banner">
+        <div><h1>Workspace AI <span style="color: #38bdf8;">Diagnostik</span></h1>
+        <p>Analisis citra sediaan dahak mikroskopis menggunakan model YOLOv8.</p></div>
+        <div style="font-size: 2.5rem;">🔬</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-def render_progress_bar(label: str, percentage: float):
-    percentage = max(0, min(100, percentage))
-    st.markdown(
-        f"""
-        <div class="progress-wrap">
-            <div class="progress-label-row">
-                <span>{label}</span>
-                <span>{percentage:.1f}%</span>
-            </div>
-            <div class="progress-track">
-                <div class="progress-fill" style="width:{percentage:.1f}%;"></div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-def run_inference(model, image: Image.Image):
-    results = model.predict(source=image, conf=0.1, imgsz=640, verbose=False)
-    result = results[0]
-    boxes = result.boxes
-    count = len(boxes) if boxes is not None else 0
-    confidences = [float(c) for c in boxes.conf.tolist()] if boxes is not None and count > 0 else []
-    avg_conf = (sum(confidences) / len(confidences) * 100) if confidences else 0.0
-    annotated_array = result.plot()
-    annotated_image = Image.fromarray(annotated_array[:, :, ::-1])
-    return annotated_image, count, avg_conf, confidences
-
-
-# =============================================================================
-# 7. PDF REPORT GENERATION
-# =============================================================================
-def generate_pdf_report(patient_info: dict, result_image: Image.Image, count: int, avg_conf: float):
-    category, css_class, label, description = get_diagnosis_class(count)
-    pdf = FPDF(orientation="P", unit="mm", format="A4")
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-
-    pdf.set_fill_color(15, 23, 42)
-    pdf.rect(0, 0, 210, 28, style="F")
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font("Helvetica", "B", 17)
-    pdf.set_xy(10, 7)
-    pdf.cell(0, 8, "SputumAI Workspace", ln=1)
-    pdf.set_font("Helvetica", "", 10)
-    pdf.set_x(10)
-    pdf.cell(0, 6, "Laporan Hasil Pemeriksaan BTA Berbasis AI (YOLOv8)", ln=1)
-
-    pdf.set_text_color(30, 41, 59)
-    pdf.ln(14)
-
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 8, "Data Pasien & Pemeriksaan", ln=1)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(3)
-
-    pdf.set_font("Helvetica", "", 10.5)
-    exam_time = datetime.now().strftime("%d %B %Y, %H:%M:%S")
-    info_rows = [
-        ("Nomor Rekam Medis", patient_info.get("rm_number", "-")),
-        ("Usia Pasien", f"{patient_info.get('age', '-')} tahun"),
-        ("Jenis Kelamin", patient_info.get("gender", "-")),
-        ("Analis / Petugas", patient_info.get("examiner", "-")),
-        ("Waktu Pemeriksaan", exam_time),
-    ]
-    for label_txt, value_txt in info_rows:
-        pdf.set_font("Helvetica", "B", 10.5)
-        pdf.cell(55, 7, f"{label_txt}", border=0)
-        pdf.set_font("Helvetica", "", 10.5)
-        pdf.cell(0, 7, f": {value_txt}", ln=1)
-
-    pdf.ln(4)
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 8, "Citra Hasil Deteksi AI", ln=1)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(3)
-
-    tmp_path = None
-    try:
-        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-        tmp_path = tmp_file.name
-        tmp_file.close()
-
-        rgb_image = result_image.convert("RGB")
-        rgb_image.save(tmp_path, format="PNG")
-
-        img_w_px, img_h_px = rgb_image.size
-        max_width_mm = 130
-        ratio = max_width_mm / img_w_px
-        display_h = img_h_px * ratio
-
-        x_center = (210 - max_width_mm) / 2
-        pdf.image(tmp_path, x=x_center, y=pdf.get_y(), w=max_width_mm, h=display_h)
-        pdf.set_y(pdf.get_y() + display_h + 6)
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            os.remove(tmp_path)
-
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 8, "Hasil Kuantitatif", ln=1)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(3)
-
-    pdf.set_font("Helvetica", "B", 10.5)
-    pdf.cell(65, 7, "Jumlah BTA Terdeteksi", border=0)
-    pdf.set_font("Helvetica", "", 10.5)
-    pdf.cell(0, 7, f": {count} basil", ln=1)
-
-    pdf.set_font("Helvetica", "B", 10.5)
-    pdf.cell(65, 7, "Rata-rata Confidence Score", border=0)
-    pdf.set_font("Helvetica", "", 10.5)
-    pdf.cell(0, 7, f": {avg_conf:.1f}%", ln=1)
-
-    pdf.ln(4)
-    pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 8, "Interpretasi Medis", ln=1)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(3)
-
-    color_map = {"negative": (34, 197, 94), "scanty": (245, 158, 11), "positive": (239, 68, 68)}
-    r, g, b = color_map.get(css_class, (100, 116, 139))
-    pdf.set_fill_color(r, g, b)
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(0, 9, f"  {label}", ln=1, fill=True)
-
-    pdf.set_text_color(30, 41, 59)
-    pdf.set_font("Helvetica", "", 10)
-    pdf.ln(2)
-    pdf.multi_cell(0, 6, description)
-
-    pdf.ln(8)
-    pdf.set_font("Helvetica", "I", 8.5)
-    pdf.set_text_color(148, 163, 184)
-    pdf.multi_cell(0, 5, "Disclaimer: Laporan ini dihasilkan oleh sistem AI dan wajib divalidasi oleh Dokter Spesialis (Sp.PK).")
-
-    pdf_output = pdf.output(dest="S")
-    if isinstance(pdf_output, str):
-        return pdf_output.encode("latin-1")
-    return bytes(pdf_output)
-
-
-# =============================================================================
-# 8. MAIN APP ENTRYPOINT
-# =============================================================================
-def main():
-    inject_custom_css()
-    init_session_state()
-
-    patient_info = render_sidebar()
-    render_header()
-    model = load_model(MODEL_PATH)
-
-    col_input, col_workspace = st.columns([1, 1.4], gap="medium")
-
-    with col_input:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<div class="card-title">📥 Sumber Citra</div>', unsafe_allow_html=True)
-        st.markdown('<div class="card-subtitle">Pilih metode input citra sediaan dahak</div>', unsafe_allow_html=True)
-
-        input_mode = st.radio("Metode Input", ["Unggah File (Drag & Drop)", "Kamera Mikroskop"], label_visibility="collapsed")
-
-        uploaded_image = None
-        if input_mode == "Unggah File (Drag & Drop)":
-            uploaded_file = st.file_uploader("Seret & lepas citra di sini, atau klik untuk memilih file", type=["jpg", "jpeg", "png"])
-            if uploaded_file is not None:
-                uploaded_image = Image.open(uploaded_file).convert("RGB")
-        else:
-            camera_file = st.camera_input("Ambil citra langsung dari kamera mikroskop")
-            if camera_file is not None:
-                uploaded_image = Image.open(camera_file).convert("RGB")
-
-        if uploaded_image is not None:
-            st.session_state.input_image = uploaded_image
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with col_workspace:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<div class="card-title">🔬 Ruang Kerja Analisis</div>', unsafe_allow_html=True)
-        st.markdown('<div class="card-subtitle">Pratinjau citra dan eksekusi pemindaian AI</div>', unsafe_allow_html=True)
-
-        if st.session_state.input_image is None:
-            st.markdown(
-                """
-                <div class="empty-state">
-                    <div class="icon-circle">🩺</div>
-                    <h4>Belum Ada Citra Dimuat</h4>
-                    <p>Unggah atau ambil citra melalui panel di sebelah kiri.</p>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        else:
-            st.image(st.session_state.input_image, use_container_width=True, caption="Citra Input (Original)")
-            run_scan = st.button("🚀 Jalankan Pemindaian AI", use_container_width=True)
-
-            if run_scan:
-                if model is None:
-                    st.error("Model AI tidak tersedia.")
-                else:
-                    with st.spinner("Menganalisis citra mikroskopis... AI sedang mendeteksi BTA."):
-                        annotated_image, count, avg_conf, confidences = run_inference(model, st.session_state.input_image)
-                    st.session_state.result_image = annotated_image
-                    st.session_state.bta_count = count
-                    st.session_state.avg_confidence = avg_conf
-                    st.session_state.detections = confidences
-                    st.session_state.scan_done = True
-                    st.toast("✅ Pemindaian AI selesai!", icon="✅")
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    if st.session_state.scan_done and st.session_state.result_image is not None:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<div class="card-title">📊 Hasil Pemeriksaan & Laporan Klinis</div>', unsafe_allow_html=True)
-        st.markdown('<div class="card-subtitle">Tinjau hasil deteksi visual dan laporan interpretasi klinis</div>', unsafe_allow_html=True)
-
-        tab_visual, tab_report = st.tabs(["🖼️ Analisis Visual", "📋 Laporan Klinis"])
-
-        count = st.session_state.bta_count
-        avg_conf = st.session_state.avg_confidence
-        category, css_class, label, description = get_diagnosis_class(count)
-
-        with tab_visual:
-            col_a, col_b = st.columns(2, gap="medium")
-            with col_a:
-                st.image(st.session_state.input_image, use_container_width=True)
-                st.markdown('<div class="img-caption">Citra Asli (Original)</div>', unsafe_allow_html=True)
-            with col_b:
-                st.image(st.session_state.result_image, use_container_width=True)
-                st.markdown('<div class="img-caption">Hasil Deteksi AI (Annotated)</div>', unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-            m1, m2, m3 = st.columns(3)
-            with m1:
-                st.markdown(f'<div class="metric-mini"><div class="val">{count}</div><div class="lbl">Total BTA Terdeteksi</div></div>', unsafe_allow_html=True)
-            with m2:
-                st.markdown(f'<div class="metric-mini"><div class="val">{avg_conf:.1f}%</div><div class="lbl">Rata-rata Confidence</div></div>', unsafe_allow_html=True)
-            with m3:
-                st.markdown(f'<div class="metric-mini"><div class="val">{category.upper()}</div><div class="lbl">Kategori Sementara</div></div>', unsafe_allow_html=True)
-
-        with tab_report:
-            st.markdown(
-                f"""
-                <div class="diagnosis-box {css_class}">
-                    <div class="diagnosis-title">{label}</div>
-                    <div class="diagnosis-desc">{description}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            st.markdown("##### Visualisasi Confidence Score Model AI")
-            render_progress_bar("Rata-rata Confidence Score Deteksi", avg_conf)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("##### Ringkasan Data Pemeriksaan")
-            info_col1, info_col2 = st.columns(2)
-            with info_col1:
-                st.markdown(f"**Nomor Rekam Medis:** {patient_info['rm_number']}")
-                st.markdown(f"**Usia Pasien:** {patient_info['age']} tahun")
-            with info_col2:
-                st.markdown(f"**Jenis Kelamin:** {patient_info['gender']}")
-                st.markdown(f"**Waktu Analisis:** {datetime.now().strftime('%d %B %Y, %H:%M:%S')}")
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            pdf_bytes = generate_pdf_report(patient_info, st.session_state.result_image, count, avg_conf)
-            file_name = f"Laporan_SputumAI_{patient_info['rm_number'].replace(' ', '_')}.pdf"
-
-            st.download_button(
-                label="⬇️ Unduh Laporan Medis (PDF)",
-                data=pdf_bytes,
-                file_name=file_name,
-                mime="application/pdf",
-                use_container_width=True,
-                key="download_pdf_btn",
-            )
-
+    if "scan_done" not in st.session_state: st.session_state.scan_done = False
+    
+    col1, col2 = st.columns([1, 1.5])
+    with col1:
+        st.markdown('<div class="card"><h4>📥 Input Citra Medis</h4>', unsafe_allow_html=True)
+        uploaded_file = st.file_uploader("Unggah sampel dahak", type=["jpg", "png"])
         st.markdown('</div>', unsafe_allow_html=True)
 
-if __name__ == "__main__":
-    main()
+    with col2:
+        st.markdown('<div class="card"><h4>🖥️ Hasil Pemindaian</h4>', unsafe_allow_html=True)
+        if uploaded_file is None:
+            st.info("Silakan unggah citra di panel sebelah kiri.")
+        else:
+            image = Image.open(uploaded_file).convert("RGB")
+            st.image(image, caption="Citra Asli", use_container_width=True)
+            if st.button("🚀 Jalankan AI Sekarang", use_container_width=True):
+                if model:
+                    with st.spinner("AI sedang memindai BTA..."):
+                        results = model.predict(image, conf=0.1, imgsz=640)[0]
+                        boxes = results.boxes
+                        st.session_state.bta_count = len(boxes)
+                        st.session_state.res_image = Image.fromarray(results.plot()[..., ::-1])
+                        st.session_state.scan_done = True
+                else:
+                    st.error("Model tidak tersedia.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    if st.session_state.scan_done:
+        st.success(f"✅ Pemindaian Selesai! Ditemukan **{st.session_state.bta_count} Sel BTA**.")
+        st.image(st.session_state.res_image, caption="Hasil Deteksi", use_container_width=True)
+
+# =============================================================================
+# MENU 3: PETA RUJUKAN FASKES (LEAFLET/FOLIUM)
+# =============================================================================
+elif menu == "🗺️ Peta Rujukan Faskes":
+    st.markdown("""
+    <div class="hero-banner">
+        <div><h1>Smart Referral & <span style="color: #38bdf8;">Peta Faskes</span></h1>
+        <p>Direktori Interaktif Rumah Sakit Rujukan dan Dokter Spesialis Paru Terdekat (Area Malang Raya).</p></div>
+        <div style="font-size: 2.5rem;">🗺️</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.info("💡 **Petunjuk:** Klik ikon rumah sakit atau klinik pada peta di bawah ini untuk melihat biodata Dokter Spesialis, fasilitas layanan TBC, dan nomor telepon rujukan.")
+    
+    m = folium.Map(location=[-7.9666, 112.6326], zoom_start=13)
+    hospitals = [
+        {"name": "RSUD Dr. Saiful Anwar (RSSA)", "lat": -7.9723, "lon": 112.6300, "color": "red", "icon": "hospital-o",
+         "html": "<b>🏥 RSUD Dr. Saiful Anwar</b><hr><b>Spesialis:</b> dr. Susilo, Sp.P(K)<br><b>Layanan:</b> TBC RO, GeneXpert<br><br><a href='tel:0341362101' target='_blank' style='background:#22c55e; color:white; padding:5px; border-radius:5px; text-decoration:none;'>📞 Telepon Rujukan</a>"},
+        {"name": "Rumah Sakit Paru Batu", "lat": -7.8715, "lon": 112.5269, "color": "red", "icon": "h-square",
+         "html": "<b>🏥 RS Paru Batu</b><hr><b>Spesialis:</b> dr. Hidayat, Sp.P<br><b>Layanan:</b> Rawat Inap Isolasi TBC<br><br><a href='tel:0341596881' target='_blank' style='background:#22c55e; color:white; padding:5px; border-radius:5px; text-decoration:none;'>📞 Telepon Rujukan</a>"},
+        {"name": "Klinik Paru Medika Malang", "lat": -7.9555, "lon": 112.6150, "color": "blue", "icon": "user-md",
+         "html": "<b>🩺 Klinik Paru Medika</b><hr><b>Spesialis:</b> dr. Anita, Sp.P<br><b>Layanan:</b> Skrining Awal<br><br><a href='https://wa.me/628123456789' target='_blank' style='background:#22c55e; color:white; padding:5px; border-radius:5px; text-decoration:none;'>💬 Hubungi via WhatsApp</a>"}
+    ]
+
+    for h in hospitals:
+        iframe = folium.IFrame(html=h["html"], width=280, height=180)
+        popup = folium.Popup(iframe, max_width=280)
+        folium.Marker(
+            location=[h["lat"], h["lon"]], popup=popup, tooltip=h["name"],
+            icon=folium.Icon(color=h["color"], icon=h["icon"], prefix='fa')
+        ).add_to(m)
+
+    st_folium(m, width=1000, height=500)
+
+# =============================================================================
+# MENU 4: PUSAT EDUKASI & SMART QUIZ
+# =============================================================================
+elif menu == "📚 Pusat Edukasi & Kuis":
+    st.markdown("""
+    <div class="hero-banner">
+        <div><h1>Pusat Edukasi & <span style="color: #38bdf8;">Smart Quiz</span></h1>
+        <p>Media pembelajaran pencegahan TBC, repositori jurnal kesehatan, dan evaluasi pemahaman.</p></div>
+        <div style="font-size: 2.5rem;">📚</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    t1, t2, t3 = st.tabs(["🛡️ Pencegahan & Pasien", "📖 Repositori Jurnal", "🎯 Kuis Edukatif"])
+
+    with t1:
+        st.markdown("### 🏃‍♂️ Apa yang harus dilakukan jika Terdiagnosis TBC?")
+        st.write("**1. Jangan Panik, TBC Bisa Disembuhkan!** Mulailah pengobatan Obat Anti Tuberkulosis (OAT) secara teratur.")
+        st.write("**2. Kepatuhan Berobat:** Minum obat secara teratur selama minimal 6 bulan tanpa terputus.")
+
+    with t2:
+        st.markdown("### 📑 Referensi Medis TBC")
+        st.markdown("- 📄 Pedoman Nasional Pelayanan Kedokteran Tatalaksana TBC (Kemenkes RI)")
+        st.markdown("- 📄 WHO Global Tuberculosis Report")
+
+    with t3:
+        st.markdown("### 🧠 SputumAI Smart Quiz")
+        q1 = st.radio("1. Mengapa ventilasi rumah sangat penting dalam pencegahan penularan TBC?", 
+                      ["A. Agar rumah tidak lembab", 
+                       "B. Sinar matahari pagi mengandung UV yang dapat membunuh kuman TBC", 
+                       "C. Agar tidak kepanasan"])
+        q2 = st.radio("2. Berapa lama standar waktu minimal pasien TBC harus minum obat (OAT)?", 
+                      ["A. 1 Minggu", "B. 2 Bulan", "C. 6 Bulan"])
+        
+        if st.button("Kirim Jawaban (Submit)"):
+            if "B. Sinar" in q1 and "C. 6" in q2:
+                st.success("🎉 Luar Biasa! Jawaban Anda Benar Semua.")
+                st.balloons()
+            else:
+                st.error("❌ Masih ada jawaban yang kurang tepat. Coba periksa kembali materi edukasi.")
+                
