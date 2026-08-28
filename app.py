@@ -243,29 +243,27 @@ elif menu == "🔬 Workspace AI (Deteksi & PDF)":
             st.session_state.scan_done = False
         st.markdown('</div>', unsafe_allow_html=True)
 
-    with col_workspace:
-        st.markdown('<div class="card"><div class="card-title">🖥️ Ruang Eksekusi AI</div>', unsafe_allow_html=True)
-        if "input_image" not in st.session_state or st.session_state.input_image is None:
-            st.info("Silakan unggah citra di panel tengah.")
-        else:
-            st.image(st.session_state.input_image, use_container_width=True, caption="Citra Input Asli")
-           if st.button("🚀 Jalankan Pemindaian AI", use_container_width=True):
-    if model is None:
-        st.error("Model `best.pt` tidak ditemukan.")
+   with col_workspace:
+    st.markdown('<div class="card"><div class="card-title">🖥️ Ruang Eksekusi AI</div>', unsafe_allow_html=True)
+    if "input_image" not in st.session_state or st.session_state.input_image is None:
+        st.info("Silakan unggah citra di panel tengah.")
     else:
-        with st.spinner("AI sedang mendeteksi BTA..."):
-            results = model.predict(source=st.session_state.input_image, conf=0.1, imgsz=640, verbose=False)[0]
-            boxes = results.boxes
-            count = len(boxes) if boxes is not None else 0
-            confidences = [float(c) for c in boxes.conf.tolist()] if boxes is not None and count > 0 else []
-            avg_conf = (sum(confidences) / len(confidences) * 100) if confidences else 0.0
-            
-            # Panggil fungsi get_diagnosis_class terlebih dahulu agar variabel css_class ada isinya
-            css_class, label, desc = get_diagnosis_class(count)
-            
-            # Perbaiki indentasi agar sejajar dengan blok else di atasnya
-            st.session_state.diagnosis_category = css_class  
-            st.session_state.patient_bta_count = count
+        st.image(st.session_state.input_image, use_container_width=True, caption="Citra Input Asli")
+        if st.button("🚀 Jalankan Pemindaian AI", use_container_width=True):
+            if model is None:
+                st.error("Model `best.pt` tidak ditemukan.")
+            else:
+                with st.spinner("AI sedang mendeteksi BTA..."):
+                    results = model.predict(source=st.session_state.input_image, conf=0.1, imgsz=640, verbose=False)[0]
+                    boxes = results.boxes
+                    count = len(boxes) if boxes is not None else 0
+                    confidences = [float(c) for c in boxes.conf.tolist()] if boxes is not None and count > 0 else []
+                    avg_conf = (sum(confidences) / len(confidences) * 100) if confidences else 0.0
+                    
+                    css_class, label, desc = get_diagnosis_class(count)
+                    st.session_state.diagnosis_category = css_class  
+                    st.session_state.patient_bta_count = count
+    st.markdown('</div>', unsafe_allow_html=True)
             
             annotated_array = results.plot()
             st.session_state.result_image = Image.fromarray(annotated_array[:, :, ::-1])
