@@ -1,5 +1,5 @@
 # =============================================================================
-# SPUTUM-AI : END-TO-END TUBERCULOSIS PLATFORM
+# SPUTUM-AI : END-TO-END TUBERCULOSIS PLATFORM (FULL CLINICAL & AI WORKSPACE)
 # =============================================================================
 import os
 import io
@@ -20,7 +20,7 @@ except ImportError:
     ULTRALYTICS_AVAILABLE = False
 
 # =============================================================================
-# 1. KONFIGURASI HALAMAN & CSS
+# 1. KONFIGURASI HALAMAN & CSS PRO
 # =============================================================================
 st.set_page_config(page_title="SputumAI | TB Platform", page_icon="🏥", layout="wide", initial_sidebar_state="expanded")
 
@@ -48,20 +48,18 @@ def inject_custom_css():
             box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; 
             margin-bottom: 20px; 
         }
+        .card-title { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
 
-        /* Perbaikan Kontras Teks & Angka Metric Streamlit */
-        [data-testid="stMetricValue"] {
-            color: #0f172a !important;
-            font-size: 1.8rem !important;
-            font-weight: 800 !important;
-        }
-        [data-testid="stMetricLabel"] {
-            color: #64748b !important;
-            font-weight: 600 !important;
-        }
-        [data-testid="stMetricDelta"] {
-            font-weight: 600 !important;
-        }
+        [data-testid="stMetricValue"] { color: #0f172a !important; font-size: 1.8rem !important; font-weight: 800 !important; }
+        [data-testid="stMetricLabel"] { color: #64748b !important; font-weight: 600 !important; }
+        
+        .diagnosis-box { border-radius: 12px; padding: 18px; margin-bottom: 15px; border-left: 6px solid; }
+        .diagnosis-box.negative { background: #f0fdf4; border-color: #22c55e; color: #15803d; }
+        .diagnosis-box.scanty { background: #fffbeb; border-color: #f59e0b; color: #b45309; }
+        .diagnosis-box.positive { background: #fef2f2; border-color: #ef4444; color: #b91c1c; }
+        
+        .progress-track { width: 100%; height: 12px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin-top: 6px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #0ea5e9, #1e3a8a); }
         </style>
     """, unsafe_allow_html=True)
 
@@ -71,27 +69,109 @@ def load_model():
     if not ULTRALYTICS_AVAILABLE or not os.path.exists(path): return None
     return YOLO(path)
 
-# =============================================================================
-# 2. NAVIGASI SIDEBAR UTAMA
-# =============================================================================
 inject_custom_css()
+model = load_model()
+
+# =============================================================================
+# 2. NAVIGASI SIDEBAR
+# =============================================================================
 with st.sidebar:
     st.markdown("### 🏥 SputumAI Ecosystem")
     st.caption("Platform Penanganan TBC Terpadu")
     st.markdown("---")
     menu = st.radio("Pilih Modul Navigasi:", [
         "📊 Dashboard Epidemiologi",
-        "🔬 Workspace AI (Deteksi)", 
+        "🔬 Workspace AI (Deteksi & PDF)", 
         "🗺️ Peta Rujukan Faskes", 
         "📚 Pusat Edukasi & Kuis"
     ])
     st.markdown("---")
     st.info("🔒 Sistem terenkripsi untuk menjaga privasi pasien sesuai standar etika medis.")
 
-model = load_model()
+# =============================================================================
+# 3. HELPER FUNGSI KLINIS & PDF
+# =============================================================================
+def get_diagnosis_class(count: int):
+    if count == 0:
+        return ("negative", "NEGATIF (Tidak Ditemukan BTA)", "Tidak ditemukan Basil Tahan Asam pada lapang pandang ini.")
+    elif 1 <= count <= 9:
+        return ("scanty", "SCANTY (BTA Positif Rendah / 1-9 per LP)", "Ditemukan jumlah kecil BTA. Perlu korelasi klinis lanjutan.")
+    else:
+        return ("positive", "POSITIF (BTA Ditemukan > 9 per Lapang Pandang)", "Ditemukan BTA signifikan. Segera rujuk untuk penanganan spesialis paru.")
+
+def generate_pdf_report(patient_info: dict, result_image: Image.Image, count: int, avg_conf: float):
+    _, label, description = get_diagnosis_class(count)
+    pdf = FPDF(orientation="P", unit="mm", format="A4")
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    pdf.set_fill_color(15, 23, 42)
+    pdf.rect(0, 0, 210, 28, style="F")
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.set_xy(10, 7)
+    pdf.cell(0, 8, "SputumAI Workspace", ln=1)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_x(10)
+    pdf.cell(0, 6, "Laporan Hasil Pemeriksaan BTA Berbasis AI", ln=1)
+
+    pdf.set_text_color(30, 41, 59)
+    pdf.ln(14)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 8, "Data Pasien & Pemeriksaan", ln=1)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(3)
+
+    pdf.set_font("Helvetica", "", 10)
+    exam_time = datetime.now().strftime("%d %B %Y, %H:%M:%S")
+    info_rows = [
+        ("Nomor Rekam Medis", patient_info.get("rm_number", "-")),
+        ("Usia Pasien", f"{patient_info.get('age', '-')} tahun"),
+        ("Jenis Kelamin", patient_info.get("gender", "-")),
+        ("Analis / Petugas", patient_info.get("examiner", "-")),
+        ("Waktu Pemeriksaan", exam_time),
+    ]
+    for k, v in info_rows:
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(50, 6, k, border=0)
+        pdf.set_font("Helvetica", "", 10)
+        pdf.cell(0, 6, f": {v}", ln=1)
+
+    pdf.ln(4)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 8, "Citra Hasil Deteksi AI", ln=1)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(3)
+
+    tmp_path = None
+    try:
+        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+        tmp_path = tmp_file.name
+        tmp_file.close()
+        result_image.convert("RGB").save(tmp_path, format="PNG")
+        pdf.image(tmp_path, x=40, y=pdf.get_y(), w=130)
+        pdf.set_y(pdf.get_y() + 95)
+    finally:
+        if tmp_path and os.path.exists(tmp_path): os.remove(tmp_path)
+
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(0, 8, "Hasil Kuantitatif & Interpretasi", ln=1)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(3)
+    pdf.cell(50, 6, "Total BTA Terdeteksi", border=0)
+    pdf.cell(0, 6, f": {count} basil", ln=1)
+    pdf.cell(50, 6, "Confidence Score", border=0)
+    pdf.cell(0, 6, f": {avg_conf:.1f}%", ln=1)
+    pdf.cell(50, 6, "Kategori", border=0)
+    pdf.cell(0, 6, f": {label}", ln=1)
+    pdf.ln(2)
+    pdf.multi_cell(0, 5, f"Interpretasi: {description}")
+
+    pdf_output = pdf.output(dest="S")
+    return pdf_output.encode("latin-1") if isinstance(pdf_output, str) else bytes(pdf_output)
 
 # =============================================================================
-# MENU 1: DASHBOARD EPIDEMIOLOGI
+# MODUL 1: DASHBOARD EPIDEMIOLOGI
 # =============================================================================
 if menu == "📊 Dashboard Epidemiologi":
     st.markdown("""
@@ -117,7 +197,7 @@ if menu == "📊 Dashboard Epidemiologi":
         st.markdown('</div>', unsafe_allow_html=True)
     with col4:
         st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.metric(label="Zona Risiko Tertinggi", value="Jabar & Jatim", delta="Prioritas Rujukan")
+        st.metric(label="Zona Risiko Tinggi", value="Jabar & Jatim", delta="Prioritas Rujukan")
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -126,53 +206,117 @@ if menu == "📊 Dashboard Epidemiologi":
         {"Tahun": ["2019", "2020", "2021", "2022", "2023"], "Jumlah Kasus Ditemukan": [568000, 393000, 397000, 717000, 809000]}
     ).set_index("Tahun")
     st.bar_chart(chart_data, color="#0ea5e9")
-    st.caption("Catatan: Penurunan di tahun 2020-2021 disebabkan oleh pandemi COVID-19 yang menurunkan kapasitas skrining TBC.")
     st.markdown('</div>', unsafe_allow_html=True)
+
 # =============================================================================
-# MENU 2: WORKSPACE AI (DETEKSI)
+# MODUL 2: WORKSPACE AI (DIAGNOSTIK & PDF REPORT)
 # =============================================================================
-elif menu == "🔬 Workspace AI (Deteksi)":
+elif menu == "🔬 Workspace AI (Deteksi & PDF)":
     st.markdown("""
     <div class="hero-banner">
-        <div><h1>Workspace AI <span style="color: #38bdf8;">Diagnostik</span></h1>
-        <p>Analisis citra sediaan dahak mikroskopis menggunakan model YOLOv8.</p></div>
+        <div><h1>Workspace AI <span style="color: #38bdf8;">Diagnostik Klinis</span></h1>
+        <p>Analisis citra sediaan dahak mikroskopis menggunakan YOLOv8 lengkap dengan Laporan PDF.</p></div>
         <div style="font-size: 2.5rem;">🔬</div>
     </div>
     """, unsafe_allow_html=True)
 
     if "scan_done" not in st.session_state: st.session_state.scan_done = False
-    
-    col1, col2 = st.columns([1, 1.5])
-    with col1:
-        st.markdown('<div class="card"><h4>📥 Input Citra Medis</h4>', unsafe_allow_html=True)
-        uploaded_file = st.file_uploader("Unggah sampel dahak", type=["jpg", "png"])
+
+    col_meta, col_input, col_workspace = st.columns([1, 1, 1.3], gap="medium")
+
+    with col_meta:
+        st.markdown('<div class="card"><div class="card-title">📋 Metadata Pasien</div>', unsafe_allow_html=True)
+        rm_number = st.text_input("No. Rekam Medis", value="RM-882145")
+        patient_age = st.number_input("Usia Pasien", value=30, min_value=1, max_value=120)
+        patient_gender = st.selectbox("Jenis Kelamin", ["Laki-laki", "Perempuan"])
+        examiner_name = st.text_input("Nama Analis / Dokter", value="dr. Andi, Sp.PK")
+        st.markdown('</div>', unsafe_allow_html=True)
+        patient_info = {"rm_number": rm_number, "age": patient_age, "gender": patient_gender, "examiner": examiner_name}
+
+    with col_input:
+        st.markdown('<div class="card"><div class="card-title">📥 Sumber Citra</div>', unsafe_allow_html=True)
+        uploaded_file = st.file_uploader("Unggah Sediaan Dahak", type=["jpg", "jpeg", "png"])
+        uploaded_image = None
+        if uploaded_file is not None:
+            uploaded_image = Image.open(uploaded_file).convert("RGB")
+            st.session_state.input_image = uploaded_image
+            st.session_state.scan_done = False
         st.markdown('</div>', unsafe_allow_html=True)
 
-    with col2:
-        st.markdown('<div class="card"><h4>🖥️ Hasil Pemindaian</h4>', unsafe_allow_html=True)
-        if uploaded_file is None:
-            st.info("Silakan unggah citra di panel sebelah kiri.")
+    with col_workspace:
+        st.markdown('<div class="card"><div class="card-title">🖥️ Ruang Eksekusi AI</div>', unsafe_allow_html=True)
+        if "input_image" not in st.session_state or st.session_state.input_image is None:
+            st.info("Silakan unggah citra di panel tengah.")
         else:
-            image = Image.open(uploaded_file).convert("RGB")
-            st.image(image, caption="Citra Asli", use_container_width=True)
-            if st.button("🚀 Jalankan AI Sekarang", use_container_width=True):
-                if model:
-                    with st.spinner("AI sedang memindai BTA..."):
-                        results = model.predict(image, conf=0.1, imgsz=640)[0]
-                        boxes = results.boxes
-                        st.session_state.bta_count = len(boxes)
-                        st.session_state.res_image = Image.fromarray(results.plot()[..., ::-1])
-                        st.session_state.scan_done = True
+            st.image(st.session_state.input_image, use_container_width=True, caption="Citra Input Asli")
+            if st.button("🚀 Jalankan Pemindaian AI", use_container_width=True):
+                if model is None:
+                    st.error("Model `best.pt` tidak ditemukan.")
                 else:
-                    st.error("Model tidak tersedia.")
+                    with st.spinner("AI sedang mendeteksi BTA..."):
+                        results = model.predict(source=st.session_state.input_image, conf=0.1, imgsz=640, verbose=False)[0]
+                        boxes = results.boxes
+                        count = len(boxes) if boxes is not None else 0
+                        confidences = [float(c) for c in boxes.conf.tolist()] if boxes is not None and count > 0 else []
+                        avg_conf = (sum(confidences) / len(confidences) * 100) if confidences else 0.0
+                        
+                        annotated_array = results.plot()
+                        st.session_state.result_image = Image.fromarray(annotated_array[:, :, ::-1])
+                        st.session_state.bta_count = count
+                        st.session_state.avg_confidence = avg_conf
+                        st.session_state.scan_done = True
+                        st.toast("✅ Pemindaian selesai!", icon="✅")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    if st.session_state.scan_done:
-        st.success(f"✅ Pemindaian Selesai! Ditemukan **{st.session_state.bta_count} Sel BTA**.")
-        st.image(st.session_state.res_image, caption="Hasil Deteksi", use_container_width=True)
+    # Hasil Deteksi & Laporan
+    if st.session_state.get("scan_done", False) and st.session_state.get("result_image") is not None:
+        st.markdown('<div class="card"><div class="card-title">📊 Hasil Pemeriksaan & Laporan Klinis</div>', unsafe_allow_html=True)
+        tab_v, tab_r = st.tabs(["🖼️ Analisis Visual", "📋 Laporan & Unduh PDF"])
+
+        count = st.session_state.bta_count
+        avg_conf = st.session_state.avg_confidence
+        css_class, label, desc = get_diagnosis_class(count)
+
+        with tab_v:
+            ca, cb = st.columns(2)
+            with ca: st.image(st.session_state.input_image, use_container_width=True, caption="Original")
+            with cb: st.image(st.session_state.result_image, use_container_width=True, caption="AI Annotated")
+            
+            m1, m2, m3 = st.columns(3)
+            with m1: st.metric("Total BTA Terdeteksi", f"{count} Sel")
+            with m2: st.metric("Rata-rata Confidence", f"{avg_conf:.1f}%")
+            with m3: st.metric("Kategori Status", label.split()[0])
+
+        with tab_r:
+            st.markdown(f"""
+                <div class="diagnosis-box {css_class}">
+                    <h3 style="margin:0 0 5px 0;">{label}</h3>
+                    <p style="margin:0;">{desc}</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+            st.write("**Visualisasi Confidence Score:**")
+            st.markdown(f"""
+                <div style="display:flex; justify-content:space-between; font-weight:600; font-size:13px;">
+                    <span>Tingkat Kepercayaan Model</span><span>{avg_conf:.1f}%</span>
+                </div>
+                <div class="progress-track"><div class="progress-fill" style="width:{avg_conf}%;"></div></div>
+            """, unsafe_allow_html=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            pdf_bytes = generate_pdf_report(patient_info, st.session_state.result_image, count, avg_conf)
+            st.download_button(
+                label="⬇️ Unduh Dokumen Laporan Medis (PDF)",
+                data=pdf_bytes,
+                file_name=f"SputumAI_Report_{patient_info['rm_number']}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+                key="download_pdf_final"
+            )
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # =============================================================================
-# MENU 3: PETA RUJUKAN FASKES (LEAFLET/FOLIUM)
+# MODUL 3: PETA RUJUKAN FASKES
 # =============================================================================
 elif menu == "🗺️ Peta Rujukan Faskes":
     st.markdown("""
@@ -206,7 +350,7 @@ elif menu == "🗺️ Peta Rujukan Faskes":
     st_folium(m, width=1000, height=500)
 
 # =============================================================================
-# MENU 4: PUSAT EDUKASI & SMART QUIZ
+# MODUL 4: PUSAT EDUKASI & KUIS
 # =============================================================================
 elif menu == "📚 Pusat Edukasi & Kuis":
     st.markdown("""
